@@ -1,0 +1,138 @@
+{% extends 'base.html' %}
+{% block title %}{{ election.title }} — E-Voting{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h3>{{ election.title }}</h3>
+  {% if election.status == 'DRAFT' %}
+    <span class="badge bg-secondary fs-6">Draft</span>
+  {% elif election.status == 'OPEN' %}
+    <span class="badge bg-success fs-6">Berlangsung</span>
+  {% else %}
+    <span class="badge bg-primary fs-6">Selesai</span>
+  {% endif %}
+</div>
+
+<div class="row mb-3">
+  <div class="col-md-8">
+    <div class="card mb-3">
+      <div class="card-body">
+        <h6>Deskripsi</h6>
+        <p class="text-muted">{{ election.description|default:"Tidak ada deskripsi." }}</p>
+        <hr>
+        <div class="row text-center">
+          <div class="col">
+            <small class="text-muted">Mulai</small>
+            <div>{{ election.start_date|date:"d M Y H:i" }}</div>
+          </div>
+          <div class="col">
+            <small class="text-muted">Selesai</small>
+            <div>{{ election.end_date|date:"d M Y H:i" }}</div>
+          </div>
+          <div class="col">
+            <small class="text-muted">Total Suara</small>
+            <div>{{ election.votes.count }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if user.is_admin_role %}
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header bg-light"><strong>Aksi Admin</strong></div>
+      <div class="card-body d-grid gap-2">
+        {% if election.status == 'DRAFT' %}
+          <a href="{% url 'elections:edit' election.pk %}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-pencil"></i> Edit Pemilihan
+          </a>
+          <a href="{% url 'candidates:create' election.pk %}" class="btn btn-outline-success btn-sm">
+            <i class="bi bi-person-plus"></i> Tambah Kandidat
+          </a>
+          <form method="post" action="{% url 'elections:open' election.pk %}">
+            {% csrf_token %}
+            <button class="btn btn-success btn-sm w-100"
+                    onclick="return confirm('Buka pemilihan ini?')">
+              <i class="bi bi-play-circle"></i> Buka Pemilihan
+            </button>
+          </form>
+        {% elif election.status == 'OPEN' %}
+          <form method="post" action="{% url 'elections:close' election.pk %}">
+            {% csrf_token %}
+            <button class="btn btn-danger btn-sm w-100"
+                    onclick="return confirm('Tutup pemilihan ini?')">
+              <i class="bi bi-stop-circle"></i> Tutup Pemilihan
+            </button>
+          </form>
+        {% endif %}
+        <a href="{% url 'audit:results' election.pk %}" class="btn btn-info btn-sm text-white">
+          <i class="bi bi-bar-chart"></i> Lihat Hasil
+        </a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if user.is_pemilih_role and election.is_active %}
+  <div class="col-md-4">
+    <div class="card {% if user_voted %}border-success{% else %}border-primary{% endif %}">
+      <div class="card-body text-center">
+        {% if user_voted %}
+          <i class="bi bi-check-circle-fill text-success display-4"></i>
+          <p class="mt-2">Anda sudah memberikan suara.</p>
+          <a href="{% url 'voting:status' election.pk %}" class="btn btn-outline-success btn-sm">Lihat Status</a>
+        {% else %}
+          <i class="bi bi-ballot display-4 text-primary"></i>
+          <p class="mt-2">Silakan berikan suara Anda.</p>
+          <a href="{% url 'voting:cast' election.pk %}" class="btn btn-primary btn-sm">
+            <i class="bi bi-check2-square"></i> Berikan Suara
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<h5><i class="bi bi-people"></i> Daftar Kandidat</h5>
+<div class="row g-3">
+  {% for candidate in candidates %}
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <strong>Paslon {{ candidate.number }}</strong> — {{ candidate.name }}
+      </div>
+      <div class="card-body">
+        <h6>Visi</h6>
+        <p class="text-muted small">{{ candidate.vision }}</p>
+        <h6>Misi</h6>
+        <p class="text-muted small">{{ candidate.mission }}</p>
+      </div>
+      {% if user.is_admin_role and election.status == 'DRAFT' %}
+      <div class="card-footer d-flex gap-2">
+        <a href="{% url 'candidates:edit' candidate.pk %}" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-pencil"></i> Edit
+        </a>
+        <form method="post" action="{% url 'candidates:delete' candidate.pk %}"
+              onsubmit="return confirm('Hapus kandidat ini?')">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-trash"></i> Hapus
+          </button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12 text-muted">Belum ada kandidat.</div>
+  {% endfor %}
+</div>
+
+<div class="mt-3">
+  <a href="{% url 'elections:list' %}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i> Kembali
+  </a>
+</div>
+{% endblock %}

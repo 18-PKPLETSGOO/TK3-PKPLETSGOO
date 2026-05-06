@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Tutup Pemilihan — E-Voting{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card border-danger">
+      <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><i class="bi bi-stop-circle"></i> Konfirmasi Tutup Pemilihan</h5>
+      </div>
+      <div class="card-body">
+        <p>Tutup pemilihan <strong>{{ election.title }}</strong>?</p>
+        <p class="text-muted small">Setelah ditutup, tidak ada suara baru yang dapat diterima.</p>
+        <form method="post">
+          {% csrf_token %}
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger">Ya, Tutup</button>
+            <a href="{% url 'elections:detail' election.pk %}" class="btn btn-outline-secondary">Batal</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

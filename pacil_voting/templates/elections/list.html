@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}Daftar Pemilihan — E-Voting{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3><i class="bi bi-list-ul"></i> Daftar Pemilihan</h3>
+  {% if user.is_admin_role %}
+  <a href="{% url 'elections:create' %}" class="btn btn-success">
+    <i class="bi bi-plus-circle"></i> Buat Pemilihan
+  </a>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+  {% for election in elections %}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <strong>{{ election.title }}</strong>
+        {% if election.status == 'DRAFT' %}
+          <span class="badge bg-secondary">Draft</span>
+        {% elif election.status == 'OPEN' %}
+          <span class="badge bg-success">Berlangsung</span>
+        {% else %}
+          <span class="badge bg-primary">Selesai</span>
+        {% endif %}
+      </div>
+      <div class="card-body">
+        <p class="text-muted small">{{ election.description|truncatechars:100|default:"Tidak ada deskripsi." }}</p>
+        <ul class="list-unstyled small">
+          <li><i class="bi bi-calendar-event"></i> Mulai: {{ election.start_date|date:"d M Y H:i" }}</li>
+          <li><i class="bi bi-calendar-check"></i> Selesai: {{ election.end_date|date:"d M Y H:i" }}</li>
+          <li><i class="bi bi-people"></i> Kandidat: {{ election.candidates.count }}</li>
+          <li><i class="bi bi-check-square"></i> Total Suara: {{ election.votes.count }}</li>
+        </ul>
+      </div>
+      <div class="card-footer d-flex gap-2">
+        <a href="{% url 'elections:detail' election.pk %}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-eye"></i> Detail
+        </a>
+        {% if election.status == 'CLOSED' or user.is_admin_role %}
+        <a href="{% url 'audit:results' election.pk %}" class="btn btn-sm btn-outline-info">
+          <i class="bi bi-bar-chart"></i> Hasil
+        </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12 text-center text-muted py-5">
+    <i class="bi bi-inbox display-4"></i>
+    <p class="mt-2">Belum ada pemilihan. {% if user.is_admin_role %}<a href="{% url 'elections:create' %}">Buat sekarang</a>.{% endif %}</p>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

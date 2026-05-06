@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Beranda — E-Voting{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col">
+    <h2><i class="bi bi-house"></i> Selamat Datang, {{ user.get_full_name|default:user.email }}!</h2>
+    <p class="text-muted">Sistem E-Voting Pemilihan Organisasi Mahasiswa</p>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <i class="bi bi-list-ul display-4 text-primary"></i>
+        <h5 class="card-title mt-2">Daftar Pemilihan</h5>
+        <p class="card-text text-muted">Lihat semua pemilihan yang tersedia.</p>
+        <a href="{% url 'elections:list' %}" class="btn btn-primary">Buka Pemilihan</a>
+      </div>
+    </div>
+  </div>
+
+  {% if user.is_admin_role %}
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <i class="bi bi-plus-circle display-4 text-success"></i>
+        <h5 class="card-title mt-2">Buat Pemilihan</h5>
+        <p class="card-text text-muted">Buat pemilihan baru dan kelola kandidat.</p>
+        <a href="{% url 'elections:create' %}" class="btn btn-success">Buat Baru</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <i class="bi bi-shield-check display-4 text-warning"></i>
+        <h5 class="card-title mt-2">Audit Log</h5>
+        <p class="card-text text-muted">Pantau aktivitas sistem secara menyeluruh.</p>
+        <a href="{% url 'audit:logs' %}" class="btn btn-warning">Lihat Log</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if user.is_pemilih_role %}
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-body text-center">
+        <i class="bi bi-person-badge display-4 text-info"></i>
+        <h5 class="card-title mt-2">Status Voting</h5>
+        <p class="card-text text-muted">Cek status pemberian suara Anda.</p>
+        <a href="{% url 'elections:list' %}" class="btn btn-info text-white">Lihat Status</a>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

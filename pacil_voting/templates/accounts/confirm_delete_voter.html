@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% block title %}Hapus Pemilih — E-Voting{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card border-danger">
+      <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Konfirmasi Hapus</h5>
+      </div>
+      <div class="card-body">
+        <p>Apakah Anda yakin ingin menghapus pemilih berikut?</p>
+        <ul>
+          <li><strong>Nama:</strong> {{ voter.get_full_name|default:"-" }}</li>
+          <li><strong>Email:</strong> {{ voter.email }}</li>
+          <li><strong>NIM:</strong> {{ voter.nim|default:"-" }}</li>
+        </ul>
+        <form method="post">
+          {% csrf_token %}
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-danger">
+              <i class="bi bi-trash"></i> Ya, Hapus
+            </button>
+            <a href="{% url 'accounts:voter_list' %}" class="btn btn-outline-secondary">Batal</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
