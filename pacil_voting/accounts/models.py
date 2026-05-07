@@ -52,7 +52,7 @@ class LoginAttempt(models.Model):
         status = 'berhasil' if self.success else 'gagal'
         return f"{self.email} - {status} - {self.timestamp}"
 
-   @classmethod
+    @classmethod
     def get_recent_failures(cls, email, minutes=15):
         window = timezone.now() - timedelta(minutes=minutes)
         return cls.objects.filter(
