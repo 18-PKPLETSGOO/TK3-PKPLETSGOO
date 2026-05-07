@@ -23,14 +23,19 @@ class LoginForm(forms.Form):
     )
 
     def clean_email(self):
-        # TODO: Strip and lowercase the email, then validate with is_valid_email().
-        # Raise ValidationError('Format email tidak valid.') if invalid.
-        pass
+        email = self.cleaned_data.get('email', '').strip().lower()
+        if not is_valid_email(email):
+            raise forms.ValidationError('Format email tidak valid.')
+        return email
+
 
     def clean_password(self):
-        # TODO: Ensure password is not empty and does not exceed 128 characters.
-        # Raise appropriate ValidationError for each case.
-        pass
+        password = self.cleaned_data.get('password', '')
+        if not password:
+            raise forms.ValidationError('Password tidak boleh kosong.')
+        if len(password) > 128:
+            raise forms.ValidationError('Password terlalu panjang.')
+        return password
 
 
 class AddVoterForm(forms.ModelForm):
@@ -56,39 +61,56 @@ class AddVoterForm(forms.ModelForm):
         }
 
     def clean_email(self):
-        # TODO: Strip and lowercase, validate with is_valid_email(), and check uniqueness.
-        # Raise ValidationError if format is invalid or email already exists in the DB.
-        pass
+        email = self.cleaned_data.get('email', '').strip().lower()
+        if not is_valid_email(email):
+            raise forms.ValidationError('Format email tidak valid.')
+        if CustomUser.objects.filter(email=email).exists():
+            raise forms.ValidationError('Email sudah terdaftar.')
+        return email
 
     def clean_first_name(self):
-        # TODO: Sanitize with sanitize_text(), then validate against r'^[a-zA-Z\s\-\.]{1,50}$'.
-        # Raise ValidationError if format doesn't match.
-        pass
+        name = sanitize_text(self.cleaned_data.get('first_name', ''))
+        if not re.match(r'^[a-zA-Z\s\-\.]{1,50}$', name):
+            raise forms.ValidationError('Nama hanya boleh mengandung huruf, spasi, atau tanda hubung.')
+        return name
 
     def clean_last_name(self):
-        # TODO: Sanitize with sanitize_text(). If non-empty, validate against r'^[a-zA-Z\s\-\.]{0,50}$'.
-        # Last name is optional so allow blank.
-        pass
+        name = sanitize_text(self.cleaned_data.get('last_name', ''))
+        if name and not re.match(r'^[a-zA-Z\s\-\.]{0,50}$', name):
+            raise forms.ValidationError('Nama hanya boleh mengandung huruf, spasi, atau tanda hubung.')
+        return name
 
     def clean_nim(self):
-        # TODO: Strip the NIM value, then validate with is_valid_nim() if non-empty.
-        pass
+        nim = self.cleaned_data.get('nim', '').strip()
+        if nim and not is_valid_nim(nim):
+            raise forms.ValidationError('NIM hanya boleh mengandung huruf dan angka (5–20 karakter).')
+        return nim
 
     def clean_username(self):
-        # TODO: Strip username, validate against r'^[a-zA-Z0-9_\.]{3,30}$', and check uniqueness.
-        pass
+        username = self.cleaned_data.get('username', '').strip()
+        if not re.match(r'^[a-zA-Z0-9_\.]{3,30}$', username):
+            raise forms.ValidationError('Username hanya boleh huruf, angka, titik, atau underscore (3–30 karakter).')
+        if CustomUser.objects.filter(username=username).exists():
+            raise forms.ValidationError('Username sudah digunakan.')
+        return username
 
     def clean_password(self):
-        # TODO: Run Django's built-in validate_password() on the password.
-        # Let it raise ValidationError if the password is too weak.
-        pass
+        password = self.cleaned_data.get('password', '')
+        validate_password(password)
+        return password
 
     def clean(self):
-        # TODO: Cross-field validation — confirm password == password_confirm.
-        # Use self.add_error('password_confirm', ...) if they don't match.
-        pass
+        cleaned_data = super().clean()
+        pw = cleaned_data.get('password')
+        pw_confirm = cleaned_data.get('password_confirm')
+        if pw and pw_confirm and pw != pw_confirm:
+            self.add_error('password_confirm', 'Password tidak cocok.')
+        return cleaned_data
 
     def save(self, commit=True):
-        # TODO: Save the user with role=ROLE_PEMILIH and hashed password.
-        # Use super().save(commit=False), set user.role, call user.set_password(), then save.
-        pass
+        user = super().save(commit=False)
+        user.role = CustomUser.ROLE_PEMILIH
+        user.set_password(self.cleaned_data['password'])
+        if commit:
+            user.save()
+        return user

@@ -3,11 +3,10 @@ import html
 
 
 def get_client_ip(request):
-    # TODO: Return the real client IP address.
-    # Check request.META for 'HTTP_X_FORWARDED_FOR' first (handles proxies/load balancers).
-    # If present, take the first IP from the comma-separated list.
-    # Fall back to request.META.get('REMOTE_ADDR', '127.0.0.1').
-    pass
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR', '127.0.0.1')
 
 
 def sanitize_text(value):
