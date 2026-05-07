@@ -32,8 +32,8 @@ class Vote(models.Model):
         return f"Suara [{self.election}] - {self.timestamp}"
 
     def save(self, *args, **kwargs):
-        # TODO: Before saving, generate anonymous_token if it doesn't exist yet.
-        # Build a raw string from: uuid.uuid4(), self.voter_id, self.election_id, timezone.now().isoformat()
-        # Hash it with hashlib.sha256(...).hexdigest() and assign to self.anonymous_token.
-        # Then call super().save(*args, **kwargs).
-        pass
+        if not self.anonymous_token:
+            raw = f"{uuid.uuid4()}{self.voter_id}{self.election_id}{timezone.now().isoformat()}"
+            self.anonymous_token = hashlib.sha256(raw.encode()).hexdigest()
+        super().save(*args, **kwargs)
+
