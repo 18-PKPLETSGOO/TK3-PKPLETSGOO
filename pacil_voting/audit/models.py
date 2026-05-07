@@ -54,20 +54,28 @@ class AuditLog(models.Model):
         return f"[{self.timestamp}] {self.action} - {self.actor_email}"
 
     def save(self, *args, **kwargs):
-        # TODO: Before saving, compute and set self.log_hash if it is not set yet.
-        # Call self._compute_hash() to get the hash value.
-        # Then call super().save(*args, **kwargs).
-        pass
+        if not self.log_hash:
+            self.log_hash = self._compute_hash()
+        super().save(*args, **kwargs)
 
     def _compute_hash(self):
-        # TODO: Build a dict with keys: action, actor_email, ip_address, details, timestamp.
-        # Use timezone.now().isoformat() for timestamp, str(self.ip_address) or '' for ip.
-        # Serialize with json.dumps(data, sort_keys=True).encode() and return sha256 hexdigest.
-        pass
+        data = {
+            'action': self.action,
+            'actor_email': self.actor_email,
+            'ip_address': str(self.ip_address) if self.ip_address else '',
+            'details': self.details,
+            'timestamp': timezone.now().isoformat(),
+        }
+        return hashlib.sha256(
+            json.dumps(data, sort_keys=True).encode()
+        ).hexdigest()
 
     @classmethod
     def log(cls, action, actor=None, ip_address=None, details=None):
-        # TODO: Create and return a new AuditLog instance.
-        # Set actor_email from actor.email if actor is not None, else ''.
-        # Pass details as an empty dict if None.
-        pass
+        return cls.objects.create(
+            action=action,
+            actor=actor,
+            actor_email=actor.email if actor else '',
+            ip_address=ip_address,
+            details=details or {},
+        )
