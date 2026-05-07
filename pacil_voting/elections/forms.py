@@ -27,15 +27,27 @@ class ElectionForm(forms.ModelForm):
         self.fields['end_date'].input_formats = ['%Y-%m-%dT%H:%M']
 
     def clean_title(self):
-        # TODO: Sanitize with sanitize_text(), ensure non-empty and <= 200 chars.
-        # Reject titles containing any of: < > { } | \ ^ `
-        pass
+        title = sanitize_text(self.cleaned_data.get('title', ''))
+        if not title:
+            raise forms.ValidationError('Judul pemilihan tidak boleh kosong.')
+        if len(title) > 200:
+            raise forms.ValidationError('Judul terlalu panjang (maks 200 karakter).')
+        if re.search(r'[<>\{\}\|\\\^`]', title):
+            raise forms.ValidationError('Judul mengandung karakter yang tidak diizinkan.')
+        return title
 
     def clean_description(self):
-        # TODO: Sanitize with sanitize_text(), ensure <= 2000 chars.
-        pass
+        desc = sanitize_text(self.cleaned_data.get('description', ''))
+        if len(desc) > 2000:
+            raise forms.ValidationError('Deskripsi terlalu panjang (maks 2000 karakter).')
+        return desc
+
 
     def clean(self):
-        # TODO: Cross-field validation — ensure start_date < end_date.
-        # Raise ValidationError on the form (not a field) if the order is wrong.
-        pass
+        cleaned_data = super().clean()
+        start = cleaned_data.get('start_date')
+        end = cleaned_data.get('end_date')
+        if start and end and start >= end:
+            raise forms.ValidationError('Tanggal mulai harus sebelum tanggal selesai.')
+        return cleaned_data
+
