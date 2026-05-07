@@ -13,12 +13,14 @@ class VoteForm(forms.Form):
 
     def __init__(self, election, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # TODO: Set self.fields['candidate'].queryset to candidates belonging to `election`,
-        # ordered by number. Store election as self.election for use in clean_candidate().
-        pass
+        self.fields['candidate'].queryset = Candidate.objects.filter(
+            election=election
+        ).order_by('number')
+        self.election = election
 
     def clean_candidate(self):
-        # TODO: Validate that the chosen candidate actually belongs to self.election.
-        # This prevents a user from submitting a candidate ID from a different election.
-        # Raise ValidationError('Kandidat tidak valid untuk pemilihan ini.') if mismatch.
-        pass
+        candidate = self.cleaned_data.get('candidate')
+        if candidate and candidate.election != self.election:
+            raise forms.ValidationError('Kandidat tidak valid untuk pemilihan ini.')
+        return candidate
+
