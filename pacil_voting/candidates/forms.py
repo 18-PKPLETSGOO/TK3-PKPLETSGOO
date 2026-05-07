@@ -16,18 +16,34 @@ class CandidateForm(forms.ModelForm):
         }
 
     def clean_number(self):
-        # TODO: Validate that number is between 1 and 99 (inclusive).
-        pass
+        number = self.cleaned_data.get('number')
+        if number is None or number < 1 or number > 99:
+            raise forms.ValidationError('Nomor urut harus antara 1 dan 99.')
+        return number
 
     def clean_name(self):
-        # TODO: Sanitize with sanitize_text(), ensure non-empty and <= 200 chars.
-        # Reject names containing: < > { } | \ ^ `
-        pass
+        name = sanitize_text(self.cleaned_data.get('name', ''))
+        if not name:
+            raise forms.ValidationError('Nama paslon tidak boleh kosong.')
+        if len(name) > 200:
+            raise forms.ValidationError('Nama terlalu panjang (maks 200 karakter).')
+        if re.search(r'[<>\{\}\|\\\^`]', name):
+            raise forms.ValidationError('Nama mengandung karakter yang tidak diizinkan.')
+        return name
 
     def clean_vision(self):
-        # TODO: Sanitize with sanitize_text(), ensure non-empty and <= 2000 chars.
-        pass
+        vision = sanitize_text(self.cleaned_data.get('vision', ''))
+        if not vision:
+            raise forms.ValidationError('Visi tidak boleh kosong.')
+        if len(vision) > 2000:
+            raise forms.ValidationError('Visi terlalu panjang (maks 2000 karakter).')
+        return vision
 
     def clean_mission(self):
-        # TODO: Sanitize with sanitize_text(), ensure non-empty and <= 3000 chars.
-        pass
+        mission = sanitize_text(self.cleaned_data.get('mission', ''))
+        if not mission:
+            raise forms.ValidationError('Misi tidak boleh kosong.')
+        if len(mission) > 3000:
+            raise forms.ValidationError('Misi terlalu panjang (maks 3000 karakter).')
+        return mission
+
