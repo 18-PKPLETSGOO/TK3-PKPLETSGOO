@@ -23,15 +23,48 @@ def login_view(request):
             max_attempts = getattr(settings, 'MAX_LOGIN_ATTEMPTS', 5)
             lockout_minutes = getattr(settings, 'LOCKOUT_DURATION_MINUTES', 15)
 
-            # TODO: Check if the account is locked out using LoginAttempt.is_locked_out().
-            # If locked: log ACTION_ACCOUNT_LOCKED, show lockout error message, re-render form.
+            if LoginAttempt.is_locked_out(email, max_attempts, lockout_minutes):
+                AuditLog.log(
+                    action=AuditLog.ACTION_ACCOUNT_LOCKED,
+                    ip_address=ip,
+                    details={'email': email, 'reason': 'Too many failed attempts'}
+                )
+                messages.error(
+                    request,
+                    f'Akun terkunci sementara karena terlalu banyak percobaan gagal. '
+                    f'Coba lagi dalam {lockout_minutes} menit.'
+                )
+                return render(request, 'accounts/login.html', {'form': form})
 
-            # TODO: Authenticate the user with Django's authenticate().
-            # On success: call login(), record a successful LoginAttempt, log ACTION_LOGIN,
-            #             redirect to 'home'.
-            # On failure: record a failed LoginAttempt, log ACTION_LOGIN_FAILED,
-            #             calculate remaining attempts and show an appropriate error message.
-            pass
+            user = authenticate(request, username=email, password=password)
+
+            if user is not None:
+                login(request, user)
+                LoginAttempt.objects.create(email=email, ip_address=ip, success=True)
+                AuditLog.log(
+                    action=AuditLog.ACTION_LOGIN,
+                    actor=user,
+                    ip_address=ip
+                )
+                return redirect('home')
+            else:
+                LoginAttempt.objects.create(email=email, ip_address=ip, success=False)
+                AuditLog.log(
+                    action=AuditLog.ACTION_LOGIN_FAILED,
+                    ip_address=ip,
+                    details={'email': email}
+                )
+                remaining = max_attempts - LoginAttempt.get_recent_failures(email, lockout_minutes)
+                if remaining <= 0:
+                    messages.error(
+                        request,
+                        f'Akun dikunci sementara. Coba lagi dalam {lockout_minutes} menit.'
+                    )
+                else:
+                    messages.error(
+                        request,
+                        f'Email atau password salah. Sisa percobaan: {remaining}.'
+                    )
         else:
             messages.error(request, 'Input tidak valid. Periksa kembali data Anda.')
 
@@ -40,32 +73,56 @@ def login_view(request):
     form = LoginForm()
     return render(request, 'accounts/login.html', {'form': form})
 
-
 def logout_view(request):
-    # TODO: If user is authenticated, log ACTION_LOGOUT with AuditLog.log().
-    # Call logout(request) and request.session.flush() to clear the session.
-    # Show a success message and redirect to 'accounts:login'.
-    pass
+    if request.user.is_authenticated:
+        AuditLog.log(
+            action=AuditLog.ACTION_LOGOUT,
+            actor=request.user,
+            ip_address=get_client_ip(request)
+        )
+    logout(request)
+    request.session.flush()
+    messages.success(request, 'Anda berhasil logout.')
+    return redirect('accounts:login')
 
 
 @admin_required
 def voter_list_view(request):
-    # TODO: Fetch all users with role=ROLE_PEMILIH ordered by email.
-    # Render 'accounts/voter_list.html' with the queryset.
-    pass
-
+    voters = CustomUser.objects.filter(role=CustomUser.ROLE_PEMILIH).order_by('email')
+    return render(request, 'accounts/voter_list.html', {'voters': voters})
 
 @admin_required
 def add_voter_view(request):
-    # TODO: Handle GET (show blank AddVoterForm) and POST (validate, save, log, redirect).
-    # On success: log ACTION_USER_CREATED, show success message, redirect to 'accounts:voter_list'.
-    # On failure: show error message and re-render the form.
-    pass
-
+    if request.method == 'POST':
+        form = AddVoterForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            AuditLog.log(
+                action=AuditLog.ACTION_USER_CREATED,
+                actor=request.user,
+                ip_address=get_client_ip(request),
+                details={'new_user_email': user.email}
+            )
+            messages.success(request, f'Pemilih {user.email} berhasil ditambahkan.')
+            return redirect('accounts:voter_list')
+        else:
+            messages.error(request, 'Terdapat kesalahan pada form. Periksa kembali.')
+    else:
+        form = AddVoterForm()
+    return render(request, 'accounts/add_voter.html', {'form': form})
 
 @admin_required
 def delete_voter_view(request, pk):
-    # TODO: Fetch voter by pk (role=ROLE_PEMILIH only, else 404).
-    # GET: render 'accounts/confirm_delete_voter.html'.
-    # POST: delete voter, log ACTION_USER_CREATED (delete variant), show success, redirect to voter_list.
-    pass
+    voter = get_object_or_404(CustomUser, pk=pk, role=CustomUser.ROLE_PEMILIH)
+    if request.method == 'POST':
+        email = voter.email
+        voter.delete()
+        AuditLog.log(
+            action=AuditLog.ACTION_USER_CREATED,
+            actor=request.user,
+            ip_address=get_client_ip(request),
+            details={'deleted_user_email': email, 'action': 'delete'}
+        )
+        messages.success(request, f'Pemilih {email} berhasil dihapus.')
+        return redirect('accounts:voter_list')
+    return render(request, 'accounts/confirm_delete_voter.html', {'voter': voter})

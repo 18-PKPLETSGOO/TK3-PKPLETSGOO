@@ -28,13 +28,11 @@ class CustomUser(AbstractUser):
 
     @property
     def is_admin_role(self):
-        # TODO: Return True if this user's role equals ROLE_ADMIN.
-        pass
+        return self.role == self.ROLE_ADMIN
 
     @property
     def is_pemilih_role(self):
-        # TODO: Return True if this user's role equals ROLE_PEMILIH.
-        pass
+        return self.role == self.ROLE_PEMILIH
 
 
 class LoginAttempt(models.Model):
@@ -54,14 +52,15 @@ class LoginAttempt(models.Model):
         status = 'berhasil' if self.success else 'gagal'
         return f"{self.email} - {status} - {self.timestamp}"
 
-    @classmethod
+   @classmethod
     def get_recent_failures(cls, email, minutes=15):
-        # TODO: Count failed login attempts for `email` within the last `minutes` minutes.
-        # Hint: use timezone.now() - timedelta(minutes=minutes) as the time window start.
-        # Filter by success=False and timestamp__gte=window.
-        pass
+        window = timezone.now() - timedelta(minutes=minutes)
+        return cls.objects.filter(
+            email=email,
+            timestamp__gte=window,
+            success=False
+        ).count()
 
     @classmethod
     def is_locked_out(cls, email, max_attempts=5, minutes=15):
-        # TODO: Return True if get_recent_failures(email, minutes) >= max_attempts.
-        pass
+        return cls.get_recent_failures(email, minutes) >= max_attempts
