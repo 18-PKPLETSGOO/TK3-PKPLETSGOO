@@ -323,10 +323,10 @@ CORS_ALLOW_CREDENTIALS = False
 ![alt text](image-2.png)
 
 #### Home Admin
-![alt text](img/image.png)
+![alt text](image.png)
 
 #### Home Pemilih
-![alt text](img/image-1.png)
+![alt text](image-1.png)
 
 #### Daftar Pemilihan
 ![alt text](image-3.png)
@@ -358,18 +358,91 @@ CORS_ALLOW_CREDENTIALS = False
 
 ### Fitur Keamanan
 
+### SQL Injection (SQLi)
+
+#### TC-SQLi-01: Login Bypass via SQL Injection
+![alt text](image-13.png)
+
+#### TC-SQLi-02: Search dengan Payload SQL Injection — Tidak Ada Data Bocor
+![alt text](image-14.png)
+
+#### TC-SQLi-03: Parameterized Query Verification (White-box)
+![alt text](image-15.png)
+
+### Code Injection (CI) & Cross-Site Scripting (XSS)
+
+#### TC-CI-01: Script Tag Injection (Stored XSS / Reflected XSS)
+![alt text](image-16.png)
+
+
+#### TC-CI-02: HTML Injection via Input Field
+![alt text](image-17.png)
+
+#### TC-CI-03: Template Injection (SSTI untuk Django/Jinja2)
+![alt text](image-18.png)
+
+### Broken Authentication (BA)
+
+#### TC-BA-01: Password Hashing Verification (White-box)
+![alt text](image-19.png)
+
 #### TC-BA-02: Account Lockout setelah 5x Login Gagal
 ![alt text](image-12.png)
 
-#### TC-CSRF-02: HTTP 403 saat Token Invalid
+#### TC-BA-03: Session Token Invalidation setelah Logout
+memasukkan manual session id
+![alt text](image-20.png)
+kembali diarahkan ke halaman login, tidak langsung mengakses elections
+![alt text](image-21.png)
 
+![alt text](messageImage_1778228826372.jpg)
 
-#### TC-CI-04d: Form Kandidat Ditolak karena Tag HTML
-
-#### TC-SQLi-02: Search dengan Payload SQL Injection — Tidak Ada Data Bocor
+#### TC-BA-04: Akses Halaman Terproteksi Tanpa Login
+![alt text](image-22.png)
 
 
 #### TC-BA-05: Pesan Error Login Generik
+email benar, password salah
+![alt text](image-23.png)
+email dan password salah
+![alt text](image-24.png)
+
+### Cross-Site Request Forgery (CSRF)
+
+#### TC-CSRF-01: CSRF Token Presence on Forms
+dapat dilihat bahwa tepat di bawah <form ..> terdapat csrfmiddlewaretoken 
+![alt text](image-25.png)
+
+#### TC-CSRF-02: HTTP 403 saat Token Invalid
+![alt text](image-26.png)
+
+#### TC-CSRF-03: Simulasi Cross-Origin Request (Tanpa Token)
+saya membuat duplikasi halaman login
+![alt text](image-27.png)
+saat login dicoba, login tidak berhasil dan menghasilkan error 403 (Forbidden)
+![alt text](image-28.png)
+
+
+---
+
+## Skenario Khusus: E-Voting System (S4)
+
+### SQL Injection (SQLi)
+
+#### TC-SQLi-04d: E-Voting Pencarian Calon
+![alt text](image-29.png)
+
+### Code Injection (CI) & Cross-Site Scripting (XSS)
+
+#### TC-CI-04d: Form Kandidat Ditolak karena Tag HTML
+![alt text](image-30.png)
+
+### Cross-Site Request Forgery (CSRF)
+
+#### TC-CSRF-04d: E-Voting Form Pilih Calon
+![alt text](image-31.png)
+
+![alt text](image-32.png)
 
 ---
 
