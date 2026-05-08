@@ -6,7 +6,7 @@ Sistem pemilihan umum berbasis web yang dibangun dengan Django dan SQLite. Diran
 
 ## Deskripsi Aplikasi
 
-Aplikasi ini memungkinkan administrator mengelola pemilihan dan kandidat, sementara pemilih dapat memberikan suara secara online. Setiap suara dicatat dengan token anonim sehingga identitas pemilih tidak dapat dikaitkan dengan pilihan kandidat. Seluruh aktivitas penting dicatat dalam log audit yang dilindungi dengan hash SHA-256.
+Aplikasi ini memungkinkan administrator mengelola pemilihan dan kandidat, sementara pemilih dapat memberikan suara secara online, selain itu terdapat peran kandidat yang memiliki akses untuk mengedit visi dan misi. Setiap suara dicatat dengan token anonim sehingga identitas pemilih tidak dapat dikaitkan dengan pilihan kandidat. Seluruh aktivitas penting dicatat dalam log audit yang dilindungi dengan hash SHA-256.
 
 ### Fitur Utama
 
