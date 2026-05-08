@@ -479,6 +479,7 @@ dan halaman menghasilkan error forbidden 403
 ---
 
 ## Hasil Test Case
+Link: https://docs.google.com/spreadsheets/d/1KMSPKvlV23YXpexYVPF_AO5B8ldtoc7lOJq_AGJgn7Q/edit?gid=1093344478#gid=1093344478
 
 ### Ringkasan Status
 
@@ -577,8 +578,6 @@ python manage.py test
 ```
 
 ---
-## Sheets Test Case TK3 PKPLETSGOO
-Link: https://docs.google.com/spreadsheets/d/1KMSPKvlV23YXpexYVPF_AO5B8ldtoc7lOJq_AGJgn7Q/edit?gid=1093344478#gid=1093344478
 
 ## Video Demo
 
