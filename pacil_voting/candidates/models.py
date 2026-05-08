@@ -1,8 +1,17 @@
+from django.conf import settings
 from django.db import models
 from elections.models import Election
 
 
 class Candidate(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='candidate_profile',
+        verbose_name='Akun Kandidat',
+    )
     election = models.ForeignKey(
         Election, on_delete=models.CASCADE, related_name='candidates',
         verbose_name='Pemilihan'

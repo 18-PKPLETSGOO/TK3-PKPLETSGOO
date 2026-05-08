@@ -2,9 +2,9 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 
 from .models import Candidate
-from .forms import CandidateForm
+from .forms import CandidateForm, CandidateProfileForm
 from elections.models import Election
-from accounts.decorators import admin_required
+from accounts.decorators import admin_required, candidate_required
 from accounts.utils import get_client_ip
 from audit.models import AuditLog
 
@@ -91,4 +91,44 @@ def candidate_delete_view(request, pk):
         return redirect('elections:detail', pk=election_pk)
     return render(request, 'candidates/confirm_delete.html', {
         'candidate': candidate, 'election': election,
+    })
+
+
+@candidate_required
+def candidate_edit_profile_view(request):
+    try:
+        candidate = request.user.candidate_profile
+    except Candidate.DoesNotExist:
+        messages.error(request, 'Akun Anda belum terhubung dengan data kandidat. Hubungi administrator.')
+        return redirect('home')
+
+    election = candidate.election
+    locked = election.status != Election.STATUS_DRAFT
+
+    if request.method == 'POST':
+        if locked:
+            messages.error(request, 'Profil tidak dapat diedit saat pemilihan bukan berstatus Draft.')
+            return redirect('candidates:my_profile')
+
+        form = CandidateProfileForm(request.POST, instance=candidate)
+        if form.is_valid():
+            form.save()
+            AuditLog.log(
+                action=AuditLog.ACTION_CANDIDATE_UPDATED,
+                actor=request.user,
+                ip_address=get_client_ip(request),
+                details={'candidate_id': candidate.pk, 'name': candidate.name},
+            )
+            messages.success(request, 'Visi dan Misi berhasil diperbarui.')
+            return redirect('candidates:my_profile')
+        else:
+            messages.error(request, 'Terdapat kesalahan pada form. Periksa kembali.')
+    else:
+        form = CandidateProfileForm(instance=candidate)
+
+    return render(request, 'candidates/edit_profile.html', {
+        'form': form,
+        'candidate': candidate,
+        'election': election,
+        'locked': locked,
     })

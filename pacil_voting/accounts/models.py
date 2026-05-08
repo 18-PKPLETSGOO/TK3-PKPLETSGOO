@@ -7,9 +7,11 @@ from datetime import timedelta
 class CustomUser(AbstractUser):
     ROLE_ADMIN = 'ADMIN'
     ROLE_PEMILIH = 'PEMILIH'
+    ROLE_CANDIDATE = 'CANDIDATE'
     ROLE_CHOICES = [
         (ROLE_ADMIN, 'Admin'),
         (ROLE_PEMILIH, 'Pemilih'),
+        (ROLE_CANDIDATE, 'Kandidat'),
     ]
 
     email = models.EmailField(unique=True)
@@ -33,6 +35,10 @@ class CustomUser(AbstractUser):
     @property
     def is_pemilih_role(self):
         return self.role == self.ROLE_PEMILIH
+
+    @property
+    def is_candidate_role(self):
+        return self.role == self.ROLE_CANDIDATE
 
 
 class LoginAttempt(models.Model):

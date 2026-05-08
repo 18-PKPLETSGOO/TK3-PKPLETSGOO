@@ -27,6 +27,18 @@ def pemilih_required(view_func):
     return _wrapped
 
 
+def candidate_required(view_func):
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('accounts:login')
+        if not request.user.is_candidate_role:
+            messages.error(request, 'Akses ditolak. Halaman ini hanya untuk Kandidat.')
+            return redirect('home')
+        return view_func(request, *args, **kwargs)
+    return _wrapped
+
+
 def login_not_required(view_func):
     @wraps(view_func)
     def _wrapped(request, *args, **kwargs):

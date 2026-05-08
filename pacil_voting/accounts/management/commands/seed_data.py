@@ -34,6 +34,26 @@ VOTERS = [
      'first_name': 'Rizky', 'last_name': 'Pratama', 'nim': '2406000005'},
 ]
 
+# Kandidat user: (election_key, candidate_number, email, password, username, first_name, last_name)
+# election_key: 'draft' = bisa edit visi/misi | 'open' = terkunci
+CANDIDATE_USERS = [
+    {
+        'email': 'kandidat.gilang@pkpl.com', 'password': 'Kandidat123!',
+        'username': 'kandidat_gilang', 'first_name': 'Gilang', 'last_name': 'Ramadhan',
+        'election_key': 'draft', 'candidate_number': 1,
+    },
+    {
+        'email': 'kandidat.hendra@pkpl.com', 'password': 'Kandidat123!',
+        'username': 'kandidat_hendra', 'first_name': 'Hendra', 'last_name': 'Wijaya',
+        'election_key': 'draft', 'candidate_number': 2,
+    },
+    {
+        'email': 'kandidat.andi@pkpl.com', 'password': 'Kandidat123!',
+        'username': 'kandidat_andi', 'first_name': 'Andi', 'last_name': 'Kurniawan',
+        'election_key': 'open', 'candidate_number': 1,
+    },
+]
+
 
 class Command(BaseCommand):
     help = 'Mengisi database dengan data demo untuk pengujian'
@@ -270,6 +290,42 @@ class Command(BaseCommand):
             f'Pemilihan DRAFT dibuat: "{election_draft.title}"'
         ))
 
+        # ── 6. Buat Akun Kandidat & Hubungkan ke Profil ─────────────────────
+        election_map = {'draft': election_draft, 'open': election_open}
+        for cu in CANDIDATE_USERS:
+            cand_user, created = CustomUser.objects.get_or_create(
+                email=cu['email'],
+                defaults={
+                    'username': cu['username'],
+                    'first_name': cu['first_name'],
+                    'last_name': cu['last_name'],
+                    'role': CustomUser.ROLE_CANDIDATE,
+                }
+            )
+            if created:
+                cand_user.set_password(cu['password'])
+                cand_user.save()
+                self.stdout.write(self.style.SUCCESS(f'Kandidat user dibuat: {cu["email"]}'))
+            else:
+                self.stdout.write(f'Kandidat user sudah ada: {cu["email"]}')
+
+            election_obj = election_map[cu['election_key']]
+            try:
+                candidate_obj = Candidate.objects.get(
+                    election=election_obj, number=cu['candidate_number']
+                )
+                if candidate_obj.user != cand_user:
+                    candidate_obj.user = cand_user
+                    candidate_obj.save()
+                    self.stdout.write(self.style.SUCCESS(
+                        f'  -> Dihubungkan ke: {candidate_obj.name}'
+                    ))
+            except Candidate.DoesNotExist:
+                self.stdout.write(self.style.WARNING(
+                    f'  -> Kandidat tidak ditemukan untuk election={cu["election_key"]} '
+                    f'nomor={cu["candidate_number"]}'
+                ))
+
         # ── Ringkasan ────────────────────────────────────────────────────────
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS('=' * 55))
@@ -277,9 +333,12 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('=' * 55))
         self.stdout.write('')
         self.stdout.write('AKUN TERSEDIA:')
-        self.stdout.write(f'  Admin   -> {ADMIN_EMAIL} / {ADMIN_PASSWORD}')
+        self.stdout.write(f'  Admin     -> {ADMIN_EMAIL} / {ADMIN_PASSWORD}')
         for v in VOTERS:
-            self.stdout.write(f'  Pemilih -> {v["email"]} / {v["password"]}')
+            self.stdout.write(f'  Pemilih   -> {v["email"]} / {v["password"]}')
+        for cu in CANDIDATE_USERS:
+            lock_info = 'bisa edit profil (DRAFT)' if cu['election_key'] == 'draft' else 'terkunci (OPEN)'
+            self.stdout.write(f'  Kandidat  -> {cu["email"]} / {cu["password"]}  [{lock_info}]')
         self.stdout.write('')
         self.stdout.write('PEMILIHAN:')
         self.stdout.write(f'  OPEN   -> "{election_open.title}"')
@@ -287,7 +346,7 @@ class Command(BaseCommand):
         self.stdout.write(f'  CLOSED -> "{election_closed.title}"')
         self.stdout.write(f'           (5 suara masuk, hasil bisa dilihat)')
         self.stdout.write(f'  DRAFT  -> "{election_draft.title}"')
-        self.stdout.write(f'           (belum dibuka, bisa tambah kandidat)')
+        self.stdout.write(f'           (belum dibuka, kandidat bisa edit visi/misi)')
         self.stdout.write('')
         self.stdout.write('Jalankan: python manage.py runserver')
         self.stdout.write('Akses   : http://127.0.0.1:8000/')

@@ -23,20 +23,21 @@ Aplikasi ini memungkinkan administrator mengelola pemilihan dan kandidat, sement
 
 Sistem ini mengimplementasikan **E-Voting System (Skenario 4)** dengan peran pengguna:
 
-| Peran   | Deskripsi                                                            |
-|---------|----------------------------------------------------------------------|
-| Admin   | Mengelola pemilihan, kandidat, dan data pemilih; melihat audit log   |
-| Pemilih | Memberikan suara, melihat status voting, melihat hasil (setelah tutup) |
+| Peran    | Deskripsi                                                                             |
+|----------|---------------------------------------------------------------------------------------|
+| Admin    | Mengelola pemilihan, kandidat, dan data pemilih; melihat audit log                    |
+| Pemilih  | Memberikan suara, melihat status voting, melihat hasil (setelah tutup)                |
+| Kandidat | Mengedit visi dan misi profil kandidat sendiri (hanya saat pemilihan berstatus Draft) |
 
 ### Struktur Modul
 
-| App          | Fungsi                                                    |
-|--------------|-----------------------------------------------------------|
-| `accounts`   | Autentikasi, manajemen pengguna, rate limiting login      |
-| `elections`  | CRUD pemilihan, manajemen status (buka/tutup), pencarian  |
-| `candidates` | CRUD kandidat per pemilihan                               |
-| `voting`     | Pengambilan suara, pencegahan double voting               |
-| `audit`      | Log audit sistem, tampilan hasil pemilihan                |
+| App          | Fungsi                                                                          |
+|--------------|---------------------------------------------------------------------------------|
+| `accounts`   | Autentikasi, manajemen pengguna (Admin/Pemilih/Kandidat), rate limiting login   |
+| `elections`  | CRUD pemilihan, manajemen status (buka/tutup), pencarian                        |
+| `candidates` | CRUD kandidat (Admin); edit visi/misi profil sendiri (Kandidat, saat Draft)     |
+| `voting`     | Pengambilan suara, pencegahan double voting                                     |
+| `audit`      | Log audit sistem, tampilan hasil pemilihan                                      |
 
 ### Stack Teknologi
 
@@ -328,6 +329,9 @@ CORS_ALLOW_CREDENTIALS = False
 #### Home Pemilih
 ![alt text](img/image-1.png)
 
+#### Home Kandidat
+![alt text](image.png)
+
 #### Daftar Pemilihan
 ![alt text](img/image-3.png)
 
@@ -520,14 +524,17 @@ Akses di: **http://127.0.0.1:8000/**
 
 ### Akun Demo (setelah seed_data)
 
-| Role    | Email                 | Password     | Kondisi                      |
-|---------|-----------------------|--------------|------------------------------|
-| Admin   | admin@pkpl.com        | Admin1234!   | Bisa kelola semua            |
-| Pemilih | pemilih1@pkpl.com     | Pemilih123!  | Sudah vote di pemilihan OPEN |
-| Pemilih | pemilih2@pkpl.com     | Pemilih123!  | Belum vote                   |
-| Pemilih | pemilih3@pkpl.com     | Pemilih123!  | Belum vote                   |
-| Pemilih | pemilih4@pkpl.com     | Pemilih123!  | Belum vote                   |
-| Pemilih | pemilih5@pkpl.com     | Pemilih123!  | Belum vote                   |
+| Role     | Email                        | Password      | Kondisi                                      |
+|----------|------------------------------|---------------|----------------------------------------------|
+| Admin    | admin@pkpl.com               | Admin1234!    | Bisa kelola semua                            |
+| Pemilih  | pemilih1@pkpl.com            | Pemilih123!   | Sudah vote di pemilihan OPEN                 |
+| Pemilih  | pemilih2@pkpl.com            | Pemilih123!   | Belum vote                                   |
+| Pemilih  | pemilih3@pkpl.com            | Pemilih123!   | Belum vote                                   |
+| Pemilih  | pemilih4@pkpl.com            | Pemilih123!   | Belum vote                                   |
+| Pemilih  | pemilih5@pkpl.com            | Pemilih123!   | Belum vote                                   |
+| Kandidat | kandidat.gilang@pkpl.com     | Kandidat123!  | Bisa edit visi/misi (pemilihan DRAFT)        |
+| Kandidat | kandidat.hendra@pkpl.com     | Kandidat123!  | Bisa edit visi/misi (pemilihan DRAFT)        |
+| Kandidat | kandidat.andi@pkpl.com       | Kandidat123!  | Terkunci, tidak bisa edit (pemilihan OPEN)   |
 
 ### Reset Data Demo
 

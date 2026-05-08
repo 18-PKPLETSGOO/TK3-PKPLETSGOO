@@ -4,7 +4,7 @@ from django.contrib import messages
 from django.conf import settings
 
 from .models import CustomUser, LoginAttempt
-from .forms import LoginForm, AddVoterForm
+from .forms import LoginForm, AddVoterForm, AddCandidateUserForm
 from .decorators import admin_required, login_not_required
 from .utils import get_client_ip
 from audit.models import AuditLog
@@ -124,3 +124,30 @@ def delete_voter_view(request, pk):
         messages.success(request, f'Pemilih {email} berhasil dihapus.')
         return redirect('accounts:voter_list')
     return render(request, 'accounts/confirm_delete_voter.html', {'voter': voter})
+
+
+@admin_required
+def candidate_user_list_view(request):
+    candidates = CustomUser.objects.filter(role=CustomUser.ROLE_CANDIDATE).order_by('email')
+    return render(request, 'accounts/candidate_user_list.html', {'candidates': candidates})
+
+
+@admin_required
+def add_candidate_user_view(request):
+    if request.method == 'POST':
+        form = AddCandidateUserForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            AuditLog.log(
+                action=AuditLog.ACTION_USER_CREATED,
+                actor=request.user,
+                ip_address=get_client_ip(request),
+                details={'new_user_email': user.email, 'role': CustomUser.ROLE_CANDIDATE},
+            )
+            messages.success(request, f'Akun kandidat {user.email} berhasil dibuat dan dihubungkan.')
+            return redirect('accounts:candidate_user_list')
+        else:
+            messages.error(request, 'Terdapat kesalahan pada form. Periksa kembali.')
+    else:
+        form = AddCandidateUserForm()
+    return render(request, 'accounts/add_candidate_user.html', {'form': form})

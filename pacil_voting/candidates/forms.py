@@ -62,3 +62,51 @@ class CandidateForm(forms.ModelForm):
             raise forms.ValidationError('Misi terlalu panjang (maks 3000 karakter).')
         return mission
 
+
+class CandidateProfileForm(forms.ModelForm):
+    """Form untuk kandidat mengedit visi & misi milik sendiri."""
+
+    class Meta:
+        model = Candidate
+        fields = ['vision', 'mission']
+        widgets = {
+            'vision': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 5,
+                'maxlength': '2000',
+                'placeholder': 'Tuliskan visi Anda...',
+            }),
+            'mission': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 7,
+                'maxlength': '3000',
+                'placeholder': 'Tuliskan misi Anda...',
+            }),
+        }
+
+    def clean_vision(self):
+        vision = self.cleaned_data.get('vision', '')
+        if re.search(r'<[^>]+>', vision):
+            raise forms.ValidationError(
+                'Input mengandung karakter tidak diizinkan (tag HTML/script tidak diperbolehkan).'
+            )
+        vision = sanitize_text(vision)
+        if not vision:
+            raise forms.ValidationError('Visi tidak boleh kosong.')
+        if len(vision) > 2000:
+            raise forms.ValidationError('Visi terlalu panjang (maks 2000 karakter).')
+        return vision
+
+    def clean_mission(self):
+        mission = self.cleaned_data.get('mission', '')
+        if re.search(r'<[^>]+>', mission):
+            raise forms.ValidationError(
+                'Input mengandung karakter tidak diizinkan (tag HTML/script tidak diperbolehkan).'
+            )
+        mission = sanitize_text(mission)
+        if not mission:
+            raise forms.ValidationError('Misi tidak boleh kosong.')
+        if len(mission) > 3000:
+            raise forms.ValidationError('Misi terlalu panjang (maks 3000 karakter).')
+        return mission
+
