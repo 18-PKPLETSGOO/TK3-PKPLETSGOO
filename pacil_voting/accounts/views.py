@@ -31,8 +31,7 @@ def login_view(request):
                 )
                 messages.error(
                     request,
-                    f'Akun terkunci sementara karena terlalu banyak percobaan gagal. '
-                    f'Coba lagi dalam {lockout_minutes} menit.'
+                    'Terlalu banyak percobaan login. Silakan coba lagi nanti.'
                 )
                 return render(request, 'accounts/login.html', {'form': form})
 
@@ -54,16 +53,15 @@ def login_view(request):
                     ip_address=ip,
                     details={'email': email}
                 )
-                remaining = max_attempts - LoginAttempt.get_recent_failures(email, lockout_minutes)
-                if remaining <= 0:
+                if LoginAttempt.is_locked_out(email, max_attempts, lockout_minutes):
                     messages.error(
                         request,
-                        f'Akun dikunci sementara. Coba lagi dalam {lockout_minutes} menit.'
+                        'Terlalu banyak percobaan login. Silakan coba lagi nanti.'
                     )
                 else:
                     messages.error(
                         request,
-                        f'Email atau password salah. Sisa percobaan: {remaining}.'
+                        'Email atau password tidak valid.'
                     )
         else:
             messages.error(request, 'Input tidak valid. Periksa kembali data Anda.')

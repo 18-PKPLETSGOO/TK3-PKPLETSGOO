@@ -12,7 +12,10 @@ from audit.models import AuditLog
 @login_required
 def election_list_view(request):
     elections = Election.objects.all()
-    return render(request, 'elections/list.html', {'elections': elections})
+    q = request.GET.get('q', '').strip()
+    if q:
+        elections = elections.filter(title__icontains=q)
+    return render(request, 'elections/list.html', {'elections': elections, 'q': q})
     
 
 

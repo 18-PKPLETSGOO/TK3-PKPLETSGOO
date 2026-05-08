@@ -11,6 +11,24 @@
   {% endif %}
 </div>
 
+<form method="get" action="{% url 'elections:list' %}" class="mb-4">
+  <div class="input-group">
+    <input type="text" name="q" class="form-control" placeholder="Cari pemilihan berdasarkan judul..." value="{{ q }}">
+    <button type="submit" class="btn btn-outline-primary">
+      <i class="bi bi-search"></i> Cari
+    </button>
+    {% if q %}
+    <a href="{% url 'elections:list' %}" class="btn btn-outline-secondary">
+      <i class="bi bi-x-circle"></i> Reset
+    </a>
+    {% endif %}
+  </div>
+</form>
+
+{% if q %}
+<p class="text-muted mb-3">Hasil pencarian untuk: <strong>"{{ q }}"</strong></p>
+{% endif %}
+
 <div class="row g-3">
   {% for election in elections %}
   <div class="col-md-6">

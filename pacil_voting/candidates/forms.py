@@ -22,7 +22,12 @@ class CandidateForm(forms.ModelForm):
         return number
 
     def clean_name(self):
-        name = sanitize_text(self.cleaned_data.get('name', ''))
+        name = self.cleaned_data.get('name', '')
+        if re.search(r'<[^>]+>', name):
+            raise forms.ValidationError(
+                'Input mengandung karakter tidak diizinkan (tag HTML/script tidak diperbolehkan).'
+            )
+        name = sanitize_text(name)
         if not name:
             raise forms.ValidationError('Nama paslon tidak boleh kosong.')
         if len(name) > 200:
@@ -32,7 +37,12 @@ class CandidateForm(forms.ModelForm):
         return name
 
     def clean_vision(self):
-        vision = sanitize_text(self.cleaned_data.get('vision', ''))
+        vision = self.cleaned_data.get('vision', '')
+        if re.search(r'<[^>]+>', vision):
+            raise forms.ValidationError(
+                'Input mengandung karakter tidak diizinkan (tag HTML/script tidak diperbolehkan).'
+            )
+        vision = sanitize_text(vision)
         if not vision:
             raise forms.ValidationError('Visi tidak boleh kosong.')
         if len(vision) > 2000:
@@ -40,7 +50,12 @@ class CandidateForm(forms.ModelForm):
         return vision
 
     def clean_mission(self):
-        mission = sanitize_text(self.cleaned_data.get('mission', ''))
+        mission = self.cleaned_data.get('mission', '')
+        if re.search(r'<[^>]+>', mission):
+            raise forms.ValidationError(
+                'Input mengandung karakter tidak diizinkan (tag HTML/script tidak diperbolehkan).'
+            )
+        mission = sanitize_text(mission)
         if not mission:
             raise forms.ValidationError('Misi tidak boleh kosong.')
         if len(mission) > 3000:
