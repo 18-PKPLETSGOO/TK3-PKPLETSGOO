@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}Buka Pemilihan — E-Voting{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card border-success">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="bi bi-play-circle"></i> Konfirmasi Buka Pemilihan</h5>
+      </div>
+      <div class="card-body">
+        <p>Buka pemilihan <strong>{{ election.title }}</strong>?</p>
+        <p class="text-muted small">Setelah dibuka, pemilih dapat memberikan suara dan konfigurasi tidak dapat diubah.</p>
+        <form method="post">
+          {% csrf_token %}
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success">Ya, Buka</button>
+            <a href="{% url 'elections:detail' election.pk %}" class="btn btn-outline-secondary">Batal</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

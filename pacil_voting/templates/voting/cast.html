@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block title %}Berikan Suara — E-Voting{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <h3 class="mb-4"><i class="bi bi-check2-square"></i> Berikan Suara — {{ election.title }}</h3>
+    <div class="alert alert-info">
+      <i class="bi bi-info-circle"></i> Pilih satu kandidat di bawah ini. Suara Anda bersifat rahasia dan tidak dapat diubah.
+    </div>
+    <form method="post" action="{% url 'voting:cast' election.pk %}">
+      {% csrf_token %}
+      <div class="row g-3 mb-4">
+        {% for candidate in candidates %}
+        <div class="col-md-6">
+          <div class="card h-100">
+            <div class="card-body">
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="radio"
+                  name="candidate"
+                  id="candidate_{{ candidate.pk }}"
+                  value="{{ candidate.pk }}"
+                  required
+                >
+                <label class="form-check-label w-100" for="candidate_{{ candidate.pk }}">
+                  <h5 class="card-title">{{ candidate.number }}. {{ candidate.name }}</h5>
+                  {% if candidate.vision %}
+                  <p class="card-text text-muted small"><strong>Visi:</strong> {{ candidate.vision }}</p>
+                  {% endif %}
+                  {% if candidate.mission %}
+                  <p class="card-text text-muted small"><strong>Misi:</strong> {{ candidate.mission }}</p>
+                  {% endif %}
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="col-12">
+          <div class="alert alert-warning">Belum ada kandidat terdaftar.</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% if form.candidate.errors %}
+      <div class="text-danger small mb-3">{{ form.candidate.errors.0 }}</div>
+      {% endif %}
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success" onclick="return confirm('Yakin ingin memberikan suara? Pilihan tidak dapat diubah.')">
+          <i class="bi bi-check-lg"></i> Konfirmasi Suara
+        </button>
+        <a href="{% url 'elections:detail' election.pk %}" class="btn btn-outline-secondary">Batal</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

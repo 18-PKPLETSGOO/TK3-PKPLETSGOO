@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Hasil Belum Tersedia — E-Voting{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card border-warning">
+      <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0"><i class="bi bi-hourglass-split"></i> Hasil Belum Tersedia</h5>
+      </div>
+      <div class="card-body text-center py-5">
+        <i class="bi bi-lock-fill display-4 text-warning mb-3 d-block"></i>
+        <h5>{{ election.title }}</h5>
+        <p class="text-muted">Hasil pemilihan akan ditampilkan setelah pemilihan resmi ditutup oleh administrator.</p>
+        <p class="text-muted small">Status saat ini: <strong>{{ election.status }}</strong></p>
+        <a href="{% url 'elections:detail' election.pk %}" class="btn btn-outline-secondary mt-2">
+          <i class="bi bi-arrow-left"></i> Kembali
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

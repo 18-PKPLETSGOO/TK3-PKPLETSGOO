@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environment
+venv/
+.venv/
+env/
+ENV/
+
+# Django
+*.log
+*.pot
+db.sqlite3
+staticfiles/
+mediafiles/
+local_settings.py
+
+# Migrations (keep these if you want to track them; remove if not)
+# */migrations/*.py
+# */migrations/*.pyc
+
+# Distribution / packaging
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.*

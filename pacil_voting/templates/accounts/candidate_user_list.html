@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+{% block title %}Kelola Akun Kandidat — E-Voting{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3><i class="bi bi-person-badge"></i> Daftar Akun Kandidat</h3>
+  <a href="{% url 'accounts:add_candidate_user' %}" class="btn btn-success">
+    <i class="bi bi-person-plus"></i> Tambah Akun Kandidat
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>Nama</th>
+          <th>Email</th>
+          <th>Username</th>
+          <th>Data Kandidat Tertaut</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for candidate_user in candidates %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ candidate_user.get_full_name|default:"-" }}</td>
+          <td>{{ candidate_user.email }}</td>
+          <td>{{ candidate_user.username }}</td>
+          <td>
+            {% if candidate_user.candidate_profile %}
+              {{ candidate_user.candidate_profile }}
+              <span class="text-muted small">({{ candidate_user.candidate_profile.election.title }})</span>
+            {% else %}
+              <span class="text-danger small">Belum tertaut</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">Belum ada akun kandidat terdaftar.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

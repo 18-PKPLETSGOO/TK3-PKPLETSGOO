@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Status Suara — E-Voting{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <h3 class="mb-4"><i class="bi bi-receipt"></i> Status Suara</h3>
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">{{ election.title }}</h5>
+        {% if vote %}
+        <div class="alert alert-success">
+          <i class="bi bi-check-circle-fill"></i> Suara Anda telah berhasil dicatat.
+        </div>
+        <p class="text-muted small">
+          <strong>Token Anonim:</strong><br>
+          <code>{{ vote.anonymous_token }}</code>
+        </p>
+        <p class="text-muted small">Simpan token ini sebagai bukti partisipasi Anda. Token tidak menunjukkan pilihan Anda.</p>
+        <p class="text-muted small"><strong>Waktu:</strong> {{ vote.timestamp|date:"d M Y, H:i" }}</p>
+        {% else %}
+        <div class="alert alert-warning">
+          <i class="bi bi-exclamation-triangle"></i> Anda belum memberikan suara pada pemilihan ini.
+        </div>
+        {% if election.is_active %}
+        <a href="{% url 'voting:cast' election.pk %}" class="btn btn-success">
+          <i class="bi bi-check2-square"></i> Berikan Suara Sekarang
+        </a>
+        {% endif %}
+        {% endif %}
+        <div class="mt-3">
+          <a href="{% url 'elections:detail' election.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Kembali
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

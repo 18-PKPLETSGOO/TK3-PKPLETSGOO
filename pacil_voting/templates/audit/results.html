@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Hasil Pemilihan — E-Voting{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <h3 class="mb-4"><i class="bi bi-bar-chart"></i> Hasil Pemilihan</h3>
+    <div class="card mb-4">
+      <div class="card-header">
+        <strong>{{ election.title }}</strong>
+        <span class="badge bg-secondary ms-2">{{ election.status }}</span>
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">Total suara masuk: <strong>{{ total_votes }}</strong></p>
+        {% for result in results %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1">
+            <span>
+              <strong>{{ result.candidate.number }}. {{ result.candidate.name }}</strong>
+              {% if forloop.first and total_votes > 0 %}
+              <span class="badge bg-success ms-1"><i class="bi bi-trophy"></i> Kandidat Terpilih</span>
+              {% endif %}
+            </span>
+            <span class="text-muted small">{{ result.count }} suara ({{ result.percentage }}%)</span>
+          </div>
+          <div class="progress" style="height: 22px;">
+            <div
+              class="progress-bar {% if forloop.first and total_votes > 0 %}bg-success{% else %}bg-primary{% endif %}"
+              role="progressbar"
+              style="width: {{ result.percentage }}%"
+              aria-valuenow="{{ result.percentage }}"
+              aria-valuemin="0"
+              aria-valuemax="100">
+              {% if result.percentage >= 10 %}{{ result.percentage }}%{% endif %}
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <p class="text-muted">Belum ada kandidat.</p>
+        {% endfor %}
+      </div>
+    </div>
+    <a href="{% url 'elections:detail' election.pk %}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Kembali
+    </a>
+  </div>
+</div>
+{% endblock %}
