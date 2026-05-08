@@ -415,6 +415,7 @@ email dan password salah
 
 #### TC-CSRF-01: CSRF Token Presence on Forms
 dapat dilihat bahwa tepat di bawah <form ..> terdapat csrfmiddlewaretoken 
+
 edit pemilihan
 <img width="1919" height="767" alt="image" src="https://github.com/user-attachments/assets/0614ed34-3374-4787-9759-3ea6926565fe" />
 buka pemilihan
@@ -427,7 +428,24 @@ berikan suara
 <img width="1919" height="768" alt="image" src="https://github.com/user-attachments/assets/feca40f2-6ad7-404a-8288-5ba3533cb527" />
 
 #### TC-CSRF-02: HTTP 403 saat Token Invalid
-![alt text](img/image-26.png)
+
+edit pemilihan
+<img width="1917" height="1121" alt="image" src="https://github.com/user-attachments/assets/fa5f019a-719f-4308-b07f-5f39f39b4070" />
+
+buka pemilihan
+<img width="1919" height="1133" alt="image" src="https://github.com/user-attachments/assets/4f29f181-d5dc-40f6-890c-c40bdd765564" />
+
+tambah candidate
+<img width="1919" height="1125" alt="image" src="https://github.com/user-attachments/assets/7803c8d7-50f9-499c-847a-5c5c14701e0c" />
+
+edit candidate
+<img width="1919" height="1126" alt="image" src="https://github.com/user-attachments/assets/eb6f1fd5-3d5f-43df-9b11-67cd1c82da53" />
+
+berikan suara
+<img width="1919" height="1136" alt="image" src="https://github.com/user-attachments/assets/13c2b29e-830d-44e0-8f6c-4b917f2501ee" />
+
+
+
 
 #### TC-CSRF-03: Simulasi Cross-Origin Request (Tanpa Token)
 saya membuat duplikasi halaman login
@@ -559,6 +577,8 @@ python manage.py test
 ```
 
 ---
+## Sheets Test Case TK3 PKPLETSGOO
+Link: https://docs.google.com/spreadsheets/d/1KMSPKvlV23YXpexYVPF_AO5B8ldtoc7lOJq_AGJgn7Q/edit?gid=1093344478#gid=1093344478
 
 ## Video Demo
 
