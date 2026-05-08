@@ -415,7 +415,16 @@ email dan password salah
 
 #### TC-CSRF-01: CSRF Token Presence on Forms
 dapat dilihat bahwa tepat di bawah <form ..> terdapat csrfmiddlewaretoken 
-![alt text](img/image-25.png)
+edit pemilihan
+<img width="1919" height="767" alt="image" src="https://github.com/user-attachments/assets/0614ed34-3374-4787-9759-3ea6926565fe" />
+buka pemilihan
+<img width="1919" height="755" alt="image" src="https://github.com/user-attachments/assets/e29fc04e-3ecb-428b-bb23-d234a86127a7" />
+tambah candidate
+<img width="1918" height="811" alt="image" src="https://github.com/user-attachments/assets/8c690360-15de-40c5-9d7f-0821dfbf5e7c" />
+edit candidate
+<img width="1919" height="814" alt="image" src="https://github.com/user-attachments/assets/b4e968e3-21c0-47df-a4a7-92a04ec0f0bc" />
+berikan suara
+<img width="1919" height="768" alt="image" src="https://github.com/user-attachments/assets/feca40f2-6ad7-404a-8288-5ba3533cb527" />
 
 #### TC-CSRF-02: HTTP 403 saat Token Invalid
 ![alt text](img/image-26.png)
