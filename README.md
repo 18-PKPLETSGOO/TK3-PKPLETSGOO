@@ -444,9 +444,10 @@ saat login dicoba, login tidak berhasil dan menghasilkan error 403 (Forbidden)
 ### Cross-Site Request Forgery (CSRF)
 
 #### TC-CSRF-04d: E-Voting Form Pilih Calon
-![alt text](img/image-31.png)
-
-![alt text](img/image-32.png)
+saya menggunakan CSRF token orang lain untuk melakukan voting
+![alt text](image-2.png)
+dan halaman menghasilkan error forbidden 403
+![alt text](image-3.png)
 
 ---
 
