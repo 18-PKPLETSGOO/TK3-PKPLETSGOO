@@ -1,12 +1,18 @@
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-=@jdcj45_%sltbx$=&wpw1az#8nf3l8vo%#ob6fk+*%_6y&_y0'
+# SECURITY WARNING: gunakan environment variable di production
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'django-insecure-=@jdcj45_%sltbx$=&wpw1az#8nf3l8vo%#ob6fk+*%_6y&_y0'
+)
 
-DEBUG = True
+# SECURITY WARNING: jangan aktifkan DEBUG di production
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -14,6 +20,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'corsheaders',
     'django.contrib.staticfiles',
     # Local apps
     'accounts',
@@ -27,6 +34,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -58,6 +66,12 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        # Least privilege: akses DB hanya melalui Django ORM.
+        # Aplikasi tidak memiliki kemampuan DDL langsung (DROP/ALTER/TRUNCATE).
+        # Django ORM menggunakan parameterized queries untuk semua operasi,
+        # mencegah SQL Injection secara struktural.
+        # Untuk production: ganti ke PostgreSQL dengan dedicated DB user
+        # yang hanya memiliki hak SELECT, INSERT, UPDATE, DELETE.
     }
 }
 
@@ -92,6 +106,15 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 CSRF_COOKIE_HTTPONLY = True
 X_FRAME_OPTIONS = 'DENY'
 
+# Cookie security — aktif otomatis di production (DEBUG=False)
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+
 # Rate limiting config
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_DURATION_MINUTES = 15
+
+# CORS configuration — only allow same origin (no external origins allowed)
+CORS_ALLOWED_ORIGINS = []
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_CREDENTIALS = False
