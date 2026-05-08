@@ -319,30 +319,50 @@ CORS_ALLOW_CREDENTIALS = False
 
 ## Screenshot Aplikasi
 
-### Tampilan Utama
-
 #### Halaman Login
+![alt text](image-2.png)
 
 #### Home Admin
+![alt text](img/image.png)
 
 #### Home Pemilih
+![alt text](img/image-1.png)
 
-#### Daftar Pemilihan dengan Search Bar
+#### Daftar Pemilihan
+![alt text](image-3.png)
+
+#### Daftar Pemilihan - Admin
+![alt text](image-4.png)
+
+#### Detail Pemilihan
+![alt text](image-5.png)
 
 #### Detail Pemilihan — Panel Admin
-
+![alt text](image-6.png)
 
 #### Halaman Casting Vote
+![alt text](image-7.png)
 
 #### Halaman Hasil Rekapitulasi
+![alt text](image-8.png)
 
-#### Audit Log
+#### Audit Log - Admin
+![alt text](image-9.png)
+
+#### Kelola Pemilih - Admin
+![alt text](image-10.png)
+
+#### Membuar & Edit Pemilihan Baru - Admin
+![alt text](image-11.png)
+
 
 ### Fitur Keamanan
 
 #### TC-BA-02: Account Lockout setelah 5x Login Gagal
+![alt text](image-12.png)
 
 #### TC-CSRF-02: HTTP 403 saat Token Invalid
+
 
 #### TC-CI-04d: Form Kandidat Ditolak karena Tag HTML
 
@@ -459,8 +479,8 @@ python manage.py test
 
 | Nama | NPM | Modul |
 |------|-----|-------|
-| Kadek Chandra Rasmi | 2406426473 | accounts |
-| Muhamad Hakim Nizami | 2406399485 | elections |
-| Muhammad Helmi Alfarissi | 2406402416 | candidates |
-| Nazwa Zahra Sausan | 2406397750 | voting |
+| Kadek Chandra Rasmi | 2406426473 | elections |
+| Muhamad Hakim Nizami | 2406399485 | accounts |
+| Muhammad Helmi Alfarissi | 2406402416 | voting |
+| Nazwa Zahra Sausan | 2406397750 | candidates |
 | Syakirah Zahra Dhawini | 2406353950 | audit |
