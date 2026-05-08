@@ -18,7 +18,7 @@
             <span>
               <strong>{{ result.candidate.number }}. {{ result.candidate.name }}</strong>
               {% if forloop.first and total_votes > 0 %}
-              <span class="badge bg-success ms-1"><i class="bi bi-trophy"></i> Terdepan</span>
+              <span class="badge bg-success ms-1"><i class="bi bi-trophy"></i> Kandidat Terpilih</span>
               {% endif %}
             </span>
             <span class="text-muted small">{{ result.count }} suara ({{ result.percentage }}%)</span>

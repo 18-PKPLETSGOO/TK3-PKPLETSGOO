@@ -12,6 +12,8 @@ from audit.models import AuditLog
 @login_required
 def election_list_view(request):
     elections = Election.objects.all()
+    if request.user.is_pemilih_role:
+        elections = elections.exclude(status=Election.STATUS_DRAFT)
     q = request.GET.get('q', '').strip()
     if q:
         elections = elections.filter(title__icontains=q)
@@ -22,6 +24,9 @@ def election_list_view(request):
 @login_required
 def election_detail_view(request, pk):
     election = get_object_or_404(Election, pk=pk)
+    if request.user.is_pemilih_role and election.status == Election.STATUS_DRAFT:
+        messages.error(request, 'Pemilihan tidak ditemukan atau belum tersedia.')
+        return redirect('elections:list')
     candidates = election.candidates.all()
     user_voted = False
     if request.user.is_pemilih_role:
