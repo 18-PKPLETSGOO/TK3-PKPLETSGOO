@@ -580,7 +580,7 @@ python manage.py test
 ---
 
 ## Video Demo
-[text](https://youtu.be/XgLtZwbfJXk)
+[Link YouTube TK3](https://youtu.be/XgLtZwbfJXk)
 
 ---
 
