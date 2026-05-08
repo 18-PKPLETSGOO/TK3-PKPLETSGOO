@@ -13,42 +13,82 @@ Aplikasi ini memungkinkan administrator mengelola pemilihan dan kandidat, sement
 - Autentikasi berbasis email dengan perlindungan brute-force (lockout setelah 5 kali gagal selama 15 menit)
 - Manajemen pemilihan dengan alur status: **DRAFT → OPEN → CLOSED**
 - Manajemen kandidat yang hanya dapat diubah saat pemilihan berstatus DRAFT
-- Pencegahan double voting melalui transaksi atomik dan kunci database (`select_for_update`)
+- Pencegahan double voting melalui transaksi atomik dan database lock (`select_for_update`)
 - Token suara anonim berbasis SHA-256 untuk menjaga kerahasiaan pilihan
 - Log audit immutable dengan hash SHA-256 untuk deteksi tamper
+- Pencarian pemilihan yang aman menggunakan Django ORM
+- CORS dikonfigurasi eksplisit untuk mencegah akses cross-origin yang tidak sah
 
----
+### Skenario Aplikasi
 
-## Struktur Modul (5 Django Apps)
+Sistem ini mengimplementasikan **E-Voting System (Skenario 4)** dengan peran pengguna:
+
+| Peran   | Deskripsi                                                            |
+|---------|----------------------------------------------------------------------|
+| Admin   | Mengelola pemilihan, kandidat, dan data pemilih; melihat audit log   |
+| Pemilih | Memberikan suara, melihat status voting, melihat hasil (setelah tutup) |
+
+### Struktur Modul
 
 | App          | Fungsi                                                    |
 |--------------|-----------------------------------------------------------|
 | `accounts`   | Autentikasi, manajemen pengguna, rate limiting login      |
-| `elections`  | CRUD pemilihan, manajemen status (buka/tutup)             |
+| `elections`  | CRUD pemilihan, manajemen status (buka/tutup), pencarian  |
 | `candidates` | CRUD kandidat per pemilihan                               |
 | `voting`     | Pengambilan suara, pencegahan double voting               |
 | `audit`      | Log audit sistem, tampilan hasil pemilihan                |
 
+### Stack Teknologi
+
+| Komponen | Teknologi                            |
+|----------|--------------------------------------|
+| Backend  | Django 6.0.4                         |
+| Database | SQLite (built-in)                    |
+| Frontend | Bootstrap 5.3 (CDN), Bootstrap Icons |
+| Hashing  | SHA-256 (token anonim & log audit)   |
+| Password | PBKDF2-SHA256 (via Django auth)      |
+| Static   | Whitenoise                           |
+| CORS     | django-cors-headers 4.9.0            |
+
 ---
 
-## Implementasi Keamanan
+## Implementasi Secure Coding
 
-### 1. Pencegahan SQL Injection
+### 1. SQL Injection Prevention (CWE-89)
 
-**Kode rentan:**
+**Vulnerability yang dimitigasi:** SQL Injection memungkinkan attacker menyisipkan perintah SQL berbahaya melalui input pengguna untuk mengakses, memanipulasi, atau menghapus data dari database.
+
+**Kode rentan (sebelum):**
 
 ```python
 # Raw SQL dengan string interpolasi — rentan SQL Injection
-cursor.execute(f"SELECT * FROM elections WHERE title = '{title}'")
+# Attacker bisa input: ' OR '1'='1' -- untuk bypass login
+# Atau: ' UNION SELECT username, password FROM users -- untuk dump data
+def login_view(request):
+    email = request.POST.get('email')
+    cursor.execute(f"SELECT * FROM users WHERE email = '{email}'")
+
+# Pencarian rentan:
+def search_view(request):
+    q = request.GET.get('q')
+    cursor.execute(f"SELECT * FROM elections WHERE title LIKE '%{q}%'")
 ```
 
-**Kode aman (diimplementasikan):**
+**Kode aman (sesudah — diimplementasikan):**
 
 ```python
-# elections/views.py — seluruh query menggunakan Django ORM
-Election.objects.filter(title=title)
+# elections/views.py — seluruh query menggunakan Django ORM (parameterized otomatis)
+@login_required
+def election_list_view(request):
+    elections = Election.objects.all()
+    q = request.GET.get('q', '').strip()
+    if q:
+        # ORM menggunakan parameterized query: WHERE title LIKE %s dengan nilai q
+        # Input berbahaya seperti "' UNION SELECT..." diperlakukan sebagai string literal
+        elections = elections.filter(title__icontains=q)
+    return render(request, 'elections/list.html', {'elections': elections, 'q': q})
 
-# voting/views.py — transaksi atomik dengan select_for_update() untuk race condition
+# voting/views.py — transaksi atomik + select_for_update() untuk race condition
 with transaction.atomic():
     if Vote.objects.select_for_update().filter(
         voter=request.user, election=election
@@ -57,62 +97,106 @@ with transaction.atomic():
     Vote.objects.create(voter=request.user, election=election, candidate=candidate)
 ```
 
-Django ORM secara otomatis menggunakan parameterized queries sehingga input pengguna tidak pernah diinterpolasi langsung ke SQL. Tidak ada penggunaan `cursor.execute()` dengan format string di seluruh codebase.
+**Teknik mitigasi:** Django ORM secara internal menggunakan parameterized queries (prepared statements) untuk semua operasi database. Input pengguna tidak pernah diinterpolasi langsung ke string SQL — melainkan dikirim sebagai parameter terpisah ke database engine. Seluruh codebase (5 apps) menggunakan ORM tanpa satu pun `cursor.execute()` dengan format string.
 
-**CWE:** CWE-89 (SQL Injection)
+Untuk konteks SQLite: akses database hanya melalui Django ORM sehingga aplikasi tidak memiliki kemampuan DDL langsung (DROP/ALTER/TRUNCATE). Di production, disarankan migrasi ke PostgreSQL dengan dedicated user yang hanya memiliki hak SELECT, INSERT, UPDATE, DELETE.
+
+**CWE:** CWE-89 (Improper Neutralization of Special Elements used in an SQL Command)
 
 ---
 
-### 2. Pencegahan Code Injection / XSS
+### 2. Code Injection / XSS Prevention (CWE-79, CWE-94)
 
-**Kode rentan:**
+**Vulnerability yang dimitigasi:** Cross-Site Scripting (XSS) memungkinkan attacker menyisipkan script berbahaya ke halaman web yang kemudian dieksekusi di browser korban. Server-Side Template Injection (SSTI) memungkinkan eksekusi kode di sisi server.
+
+**Kode rentan (sebelum):**
 
 ```python
-# Langsung menyimpan input pengguna tanpa sanitasi
-candidate.name = request.POST.get('name')
+# Menyimpan input pengguna tanpa sanitasi — rentan Stored XSS
+def create_candidate(request):
+    name = request.POST.get('name')  # Bisa berisi <script>alert(1)</script>
+    Candidate.objects.create(name=name)  # Tersimpan ke DB
+
+# Template tanpa auto-escape — script akan dieksekusi browser
+# {{ candidate.name }}  →  <script>alert(1)</script>  →  EKSEKUSI!
 ```
 
-**Kode aman (diimplementasikan):**
+**Kode aman (sesudah — diimplementasikan):**
 
 ```python
-# accounts/utils.py
+# accounts/utils.py — sanitasi dengan html.escape()
 import html, re
 
 def sanitize_text(value):
     if not value:
         return value
     return html.escape(str(value).strip())
+    # < → &lt;   > → &gt;   " → &quot;   ' → &#x27;
 
-def is_safe_text(value, max_length=500):
-    pattern = r'^[\w\s\.,\-\(\)\!\?\:\;\"\'\&\/\+\=\@\#\%\^\*\[\]àáâãäåæçèéêëìíîïðñòóôõöùúûüýþÿÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖÙÚÛÜÝÞ]+$'
-    return bool(re.match(pattern, value, re.UNICODE)) and len(value) <= max_length
+# candidates/forms.py — validasi berlapis: deteksi HTML tag → sanitasi → length check
+def clean_name(self):
+    name = self.cleaned_data.get('name', '')
+    # Layer 1: deteksi tag HTML eksplisit, tolak dengan pesan jelas
+    if re.search(r'<[^>]+>', name):
+        raise forms.ValidationError(
+            'Input mengandung karakter tidak diizinkan (tag HTML/script tidak diperbolehkan).'
+        )
+    # Layer 2: html.escape() untuk karakter berbahaya yang tersisa
+    name = sanitize_text(name)
+    if re.search(r'[<>{}\|\\^`]', name):
+        raise forms.ValidationError('Nama mengandung karakter yang tidak diizinkan.')
+    return name
 ```
 
-- `html.escape()` mengonversi karakter berbahaya (`<`, `>`, `"`, `'`) menjadi HTML entity sebelum disimpan
-- Regex allowlist memvalidasi karakter yang diperbolehkan pada semua field teks bebas
-- Template Django menggunakan auto-escaping secara default, menghasilkan double-escape yang aman
-- Header Content-Security-Policy ditambahkan di `base.html` untuk membatasi sumber skrip
+```html
+<!-- base.html — Content Security Policy membatasi sumber script -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; style-src 'self' https://cdn.jsdelivr.net;
+               script-src 'self' https://cdn.jsdelivr.net;
+               font-src 'self' https://cdn.jsdelivr.net;">
 
-**CWE:** CWE-79 (Cross-site Scripting), CWE-94 (Code Injection / SSTI)
+<!-- Template Django — auto-escaping aktif global, TIDAK ADA penggunaan |safe -->
+{{ candidate.name }}   <!-- auto-escape: <script> → &lt;script&gt; -->
+{{ candidate.vision }} <!-- auto-escape aktif -->
+```
+
+**Teknik mitigasi:** Defense-in-depth dengan tiga lapisan: (1) validasi input di backend yang menolak tag HTML eksplisit sebelum disimpan, (2) `html.escape()` yang mengkonversi karakter berbahaya menjadi HTML entity, dan (3) Django template auto-escaping aktif secara global — tidak ada satu pun penggunaan `|safe` atau `mark_safe()` di seluruh template. Ditambah CSP header di `base.html` untuk mencegah eksekusi script dari sumber eksternal yang tidak terdaftar.
+
+**CWE:** CWE-79 (Cross-site Scripting), CWE-94 (Improper Control of Generation of Code / SSTI)
 
 ---
 
-### 3. Broken Authentication — Rate Limiting & Session Security
+### 3. Broken Authentication Mitigation (CWE-256, CWE-307, CWE-613, CWE-204)
 
-**Kode rentan:**
+**Vulnerability yang dimitigasi:** Broken Authentication mencakup penyimpanan password plaintext, tidak adanya proteksi brute force, session yang tidak diinvalidasi setelah logout, dan pesan error yang membocorkan informasi (user enumeration).
+
+**Kode rentan (sebelum):**
 
 ```python
-# Tidak ada pembatasan percobaan login
+# Password disimpan plaintext — langsung terbaca jika DB bocor
+User.objects.create(email=email, password=password)  # plaintext!
+
+# Tidak ada pembatasan percobaan login — brute force bebas
 def login_view(request):
     user = authenticate(email=email, password=password)
     if user:
         login(request, user)
+    # Tidak ada counter, tidak ada lockout
+
+# Session tidak diinvalidasi — cookie lama masih bisa digunakan
+def logout_view(request):
+    logout(request)  # hanya hapus dari client-side
+    return redirect('login')
+
+# Pesan error membedakan kasus — memungkinkan user enumeration
+messages.error(request, 'Username tidak ditemukan.')   # bocorkan info!
+messages.error(request, 'Password salah.')             # bocorkan info!
 ```
 
-**Kode aman (diimplementasikan):**
+**Kode aman (sesudah — diimplementasikan):**
 
 ```python
-# accounts/models.py
+# accounts/models.py — LoginAttempt untuk rate limiting
 class LoginAttempt(models.Model):
     @classmethod
     def is_locked_out(cls, email, max_attempts=5, minutes=15):
@@ -120,70 +204,180 @@ class LoginAttempt(models.Model):
         failures = cls.objects.filter(
             email=email, success=False, timestamp__gte=window
         ).count()
-        return failures >= max_attempts
+        return failures >= max_attempts  # Kunci setelah 5 kali gagal
 
-# accounts/views.py
+# accounts/views.py — login dengan rate limiting + pesan generik (anti-enumeration)
 def login_view(request):
     if LoginAttempt.is_locked_out(email, max_attempts, lockout_minutes):
-        AuditLog.log(action=AuditLog.ACTION_ACCOUNT_LOCKED, ...)
-        messages.error(request, 'Akun terkunci sementara ...')
+        messages.error(request, 'Terlalu banyak percobaan login. Silakan coba lagi nanti.')
         return render(request, 'accounts/login.html', {'form': form})
-    ...
+
+    user = authenticate(request, username=email, password=password)
+    if user is not None:
+        login(request, user)
+    else:
+        LoginAttempt.objects.create(email=email, ip_address=ip, success=False)
+        # Pesan SAMA untuk email tidak terdaftar DAN password salah (mencegah CWE-204)
+        messages.error(request, 'Email atau password tidak valid.')
+
+# accounts/views.py — logout dengan server-side session invalidation
+def logout_view(request):
     logout(request)
-    request.session.flush()  # Invalidasi total session saat logout
+    request.session.flush()  # Hapus session dari server-side store
+    return redirect('accounts:login')
+
+# accounts/forms.py — password dihash otomatis via Django
+def save(self, commit=True):
+    user = super().save(commit=False)
+    user.set_password(self.cleaned_data['password'])  # PBKDF2-SHA256 otomatis
+    user.save()
 ```
 
-Konfigurasi keamanan session di `settings.py`:
-
 ```python
+# pacil_voting/settings.py — konfigurasi keamanan session
 SESSION_COOKIE_HTTPONLY = True        # Cegah akses JavaScript ke cookie
 SESSION_COOKIE_SAMESITE = 'Lax'      # Proteksi CSRF via SameSite policy
+SESSION_COOKIE_SECURE = not DEBUG    # HTTPS only di production
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SECURE = not DEBUG
 X_FRAME_OPTIONS = 'DENY'             # Cegah clickjacking
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_DURATION_MINUTES = 15
+
+# RBAC via decorator — setiap role hanya akses endpoint yang sesuai
+# accounts/decorators.py
+def admin_required(view_func):
+    def _wrapped(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('accounts:login')
+        if not request.user.is_admin_role:
+            return redirect('home')
+        return view_func(request, *args, **kwargs)
+    return _wrapped
 ```
 
-Password disimpan menggunakan PBKDF2-SHA256 (default Django) — tidak pernah disimpan plaintext.
+**Teknik mitigasi:** Password menggunakan PBKDF2-SHA256 via `set_password()` Django — tidak pernah disimpan plaintext. Rate limiting via model `LoginAttempt` yang mencatat setiap percobaan gagal — akun dikunci 15 menit setelah 5 kali gagal. Session diinvalidasi di sisi server dengan `session.flush()` saat logout. Pesan error login dibuat identik untuk semua skenario gagal untuk mencegah user enumeration (CWE-204). RBAC diimplementasikan via decorator di setiap view.
 
-**CWE:** CWE-256 (Plaintext Storage of Password), CWE-307 (Brute Force), CWE-384 (Session Fixation), CWE-613 (Insufficient Session Expiration)
+**CWE:** CWE-256 (Plaintext Storage of Password), CWE-307 (Improper Restriction of Excessive Authentication Attempts), CWE-613 (Insufficient Session Expiration), CWE-204 (Observable Response Discrepancy)
 
 ---
 
-### 4. CSRF Protection
+### 4. CSRF Protection (CWE-352)
 
-**Kode rentan:**
+**Vulnerability yang dimitigasi:** Cross-Site Request Forgery memungkinkan attacker membuat korban yang sudah login mengirimkan request berbahaya tanpa sepengetahuannya, misalnya memberikan suara atau mengubah data tanpa izin.
+
+**Kode rentan (sebelum):**
 
 ```html
-<!-- Form tanpa CSRF token — rentan serangan cross-site -->
+<!-- Form tanpa CSRF token — request dari situs manapun bisa diterima -->
 <form method="post" action="/voting/election/1/cast/">
+  <input name="candidate" value="1">
   <button type="submit">Vote</button>
 </form>
+<!-- Saat korban mengunjungi halaman attacker sambil login, vote terkirim otomatis -->
 ```
 
-**Kode aman (diimplementasikan):**
+**Kode aman (sesudah — diimplementasikan):**
 
 ```html
-<!-- Semua form POST menyertakan CSRF token -->
+<!-- Semua form POST menggunakan {% csrf_token %} -->
 <form method="post" action="{% url 'voting:cast' election.pk %}">
   {% csrf_token %}
+  <!-- Menghasilkan: <input type="hidden" name="csrfmiddlewaretoken" value="UNIQUE_TOKEN"> -->
   <button type="submit">Berikan Suara</button>
+</form>
+
+<!-- Logout menggunakan POST + CSRF token (bukan link GET) -->
+<form method="post" action="{% url 'accounts:logout' %}">
+  {% csrf_token %}
+  <button type="submit">Logout</button>
 </form>
 ```
 
 ```python
-# pacil_voting/settings.py
+# pacil_voting/settings.py — CsrfViewMiddleware + CORS aktif global
 MIDDLEWARE = [
-    'django.middleware.csrf.CsrfViewMiddleware',  # Aktif global
+    'corsheaders.middleware.CorsMiddleware',       # CORS — blokir cross-origin
+    'django.middleware.csrf.CsrfViewMiddleware',   # CSRF — verifikasi token setiap POST
     ...
 ]
 CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SECURE = not DEBUG
+
+# CORS dikonfigurasi eksplisit (django-cors-headers)
+CORS_ALLOWED_ORIGINS = []        # Tidak ada origin eksternal yang diizinkan
+CORS_ALLOW_ALL_ORIGINS = False   # Default deny untuk semua cross-origin request
+CORS_ALLOW_CREDENTIALS = False
 ```
 
-Semua operasi write (login, logout, buat/edit pemilihan, tambah/hapus kandidat, berikan suara, hapus pengguna) menggunakan POST dengan `{% csrf_token %}`. Logout pun menggunakan POST — bukan link GET — untuk mencegah CSRF pada operasi logout.
+**Teknik mitigasi:** Django `CsrfViewMiddleware` memverifikasi token unik per-session pada setiap request POST/PUT/DELETE. Request tanpa token atau dengan token tidak valid menghasilkan HTTP 403 Forbidden. Semua form write di aplikasi menyertakan `{% csrf_token %}` tanpa pengecualian. CORS dikonfigurasi eksplisit via `django-cors-headers` dengan `CORS_ALLOWED_ORIGINS = []` — tidak ada cross-origin request yang diizinkan. `SESSION_COOKIE_SAMESITE = 'Lax'` memberikan lapisan proteksi tambahan.
 
 **CWE:** CWE-352 (Cross-Site Request Forgery)
+
+---
+
+## Screenshot Aplikasi
+
+### Tampilan Utama
+
+#### Halaman Login
+
+#### Home Admin
+
+#### Home Pemilih
+
+#### Daftar Pemilihan dengan Search Bar
+
+#### Detail Pemilihan — Panel Admin
+
+
+#### Halaman Casting Vote
+
+#### Halaman Hasil Rekapitulasi
+
+#### Audit Log
+
+### Fitur Keamanan
+
+#### TC-BA-02: Account Lockout setelah 5x Login Gagal
+
+#### TC-CSRF-02: HTTP 403 saat Token Invalid
+
+#### TC-CI-04d: Form Kandidat Ditolak karena Tag HTML
+
+#### TC-SQLi-02: Search dengan Payload SQL Injection — Tidak Ada Data Bocor
+
+
+#### TC-BA-05: Pesan Error Login Generik
+
+---
+
+## Hasil Test Case
+
+### Ringkasan Status
+
+| TC-ID | Nama Test Case | Status |
+|-------|----------------|--------|
+| TC-SQLi-01 | Login bypass via SQL injection | ✅ LULUS |
+| TC-SQLi-02 | Data extraction via UNION injection | ✅ LULUS |
+| TC-SQLi-03 | Parameterized query verification (white-box) | ✅ LULUS |
+| TC-CI-01 | Script tag injection (Stored/Reflected XSS) | ✅ LULUS |
+| TC-CI-02 | HTML injection via input field | ✅ LULUS |
+| TC-CI-03 | Template injection (SSTI) | ✅ LULUS |
+| TC-BA-01 | Password hashing verification (white-box) | ✅ LULUS |
+| TC-BA-02 | Brute force / rate limiting | ✅ LULUS |
+| TC-BA-03 | Session token invalidation setelah logout | ✅ LULUS |
+| TC-BA-04 | Akses halaman terproteksi tanpa login | ✅ LULUS |
+| TC-BA-05 | Informasi error yang tidak informatif | ✅ LULUS |
+| TC-CSRF-01 | CSRF token presence on forms | ✅ LULUS |
+| TC-CSRF-02 | Request dengan CSRF token invalid ditolak | ✅ LULUS |
+| TC-CSRF-03 | Simulasi cross-origin request tanpa token | ✅ LULUS |
+| TC-SQLi-04d | E-Voting: pencarian calon | ✅ LULUS |
+| TC-CI-04d | E-Voting: nama/visi-misi calon | ✅ LULUS |
+| TC-CSRF-04d | E-Voting: form pilih calon | ✅ LULUS |
+
+**Total: 17/17 TC Lulus ✅**
 
 ---
 
@@ -198,13 +392,20 @@ Semua operasi write (login, logout, buat/edit pemilihan, tambah/hapus kandidat, 
 
 ```bash
 # 1. Clone repositori
-git clone <repo-url>
+git clone https://gitlab.cs.ui.ac.id/pkpl26_18_pkpletsgoo/pkpl26_18_pkpletsgoo.git
 cd pkpl26_18_pkpletsgoo
 
 # 2. Buat dan aktifkan virtual environment
-python3 -m venv venv
-source venv/bin/activate        # Linux/macOS
-# atau: venv\Scripts\activate   # Windows
+python -m venv venv
+
+# Linux/macOS:
+source venv/bin/activate
+
+# Windows (Command Prompt):
+venv\Scripts\activate
+
+# Windows (PowerShell):
+.\venv\Scripts\Activate.ps1
 
 # 3. Install dependensi
 pip install -r pacil_voting/requirements.txt
@@ -215,52 +416,42 @@ cd pacil_voting
 # 5. Jalankan migrasi database
 python manage.py migrate
 
-# 6. Buat akun admin
-python manage.py createsuperuser
-# Masukkan email, username, dan password saat diminta
-# Kemudian buka /admin/ dan set role pengguna ke ADMIN
+# 6. Isi data demo (disarankan)
+python manage.py seed_data
 
 # 7. Jalankan server
 python manage.py runserver
 ```
 
-Akses aplikasi di **http://127.0.0.1:8000/**
+Akses di: **http://127.0.0.1:8000/**
 
----
+### Akun Demo (setelah seed_data)
 
-## Alur Penggunaan
+| Role    | Email                 | Password     | Kondisi                      |
+|---------|-----------------------|--------------|------------------------------|
+| Admin   | admin@pkpl.com        | Admin1234!   | Bisa kelola semua            |
+| Pemilih | pemilih1@pkpl.com     | Pemilih123!  | Sudah vote di pemilihan OPEN |
+| Pemilih | pemilih2@pkpl.com     | Pemilih123!  | Belum vote                   |
+| Pemilih | pemilih3@pkpl.com     | Pemilih123!  | Belum vote                   |
+| Pemilih | pemilih4@pkpl.com     | Pemilih123!  | Belum vote                   |
+| Pemilih | pemilih5@pkpl.com     | Pemilih123!  | Belum vote                   |
 
-1. **Admin** login → buat pemilihan baru (status: DRAFT)
-2. **Admin** tambah minimal 2 kandidat ke pemilihan
-3. **Admin** tambah akun pemilih melalui menu manajemen voter
-4. **Admin** buka pemilihan (status: OPEN)
-5. **Pemilih** login → pilih pemilihan aktif → berikan suara
-6. **Admin** tutup pemilihan (status: CLOSED)
-7. **Semua pengguna** dapat melihat hasil setelah pemilihan ditutup
-
----
-
-## Menjalankan Pengujian
+### Reset Data Demo
 
 ```bash
-# Dari dalam direktori pacil_voting/
+python manage.py seed_data --reset
+```
+
+### Menjalankan Unit Test
+
+```bash
 python manage.py test
 ```
 
-Seluruh 18 unit test mencakup model, autentikasi, rate limiting, double-vote prevention, dan audit logging.
-
 ---
 
-## Teknologi
+## Video Demo
 
-| Komponen   | Teknologi                             |
-|------------|---------------------------------------|
-| Backend    | Django 6.0.4                          |
-| Database   | SQLite (built-in)                     |
-| Frontend   | Bootstrap 5.3 (CDN), Bootstrap Icons  |
-| Hashing    | SHA-256 (token anonim & log audit)    |
-| Password   | PBKDF2-SHA256 (via Django auth)       |
-| Static     | Whitenoise                            |
 
 ---
 
@@ -268,8 +459,8 @@ Seluruh 18 unit test mencakup model, autentikasi, rate limiting, double-vote pre
 
 | Nama | NPM | Modul |
 |------|-----|-------|
-|  |  | accounts |
-|  |  | elections |
-|  |  | candidates |
-|  |  | voting |
-|  |  | audit |
+| Kadek Chandra Rasmi | 2406426473 | accounts |
+| Muhamad Hakim Nizami | 2406399485 | elections |
+| Muhammad Helmi Alfarissi | 2406402416 | candidates |
+| Nazwa Zahra Sausan | 2406397750 | voting |
+| Syakirah Zahra Dhawini | 2406353950 | audit |
