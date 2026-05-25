@@ -880,8 +880,8 @@ http://localhost:8000/
 ---
 ## Anggota Kelompok
 
-| Nama | NPM | Modul |
-|------|-----|-------|
+| Nama | NPM | 
+|------|-----|
 | Kadek Chandra Rasmi | 2406426473 | 
 | Muhamad Hakim Nizami | 2406399485 | 
 | Muhammad Helmi Alfarissi | 2406402416 | 
