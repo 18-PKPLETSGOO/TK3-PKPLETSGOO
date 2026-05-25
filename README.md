@@ -53,6 +53,9 @@ Sistem ini mengimplementasikan **E-Voting System (Skenario 4)** dengan peran pen
 
 ---
 
+<details>
+<summary>📋 Tugas 3 — Secure Coding</summary>
+
 ## Implementasi Secure Coding
 
 ### 1. SQL Injection Prevention (CWE-89)
@@ -330,7 +333,7 @@ CORS_ALLOW_CREDENTIALS = False
 ![alt text](img/image-1.png)
 
 #### Home Kandidat
-![alt text](image.png)
+![alt text](img/image-home.png)
 
 #### Daftar Pemilihan
 ![alt text](img/image-3.png)
@@ -593,3 +596,297 @@ python manage.py test
 | Muhammad Helmi Alfarissi | 2406402416 | voting |
 | Nazwa Zahra Sausan | 2406397750 | candidates |
 | Syakirah Zahra Dhawini | 2406353950 | audit |
+
+</details>
+
+---
+
+<details open>
+<summary>Tugas 4 — Unit Testing & Pentesting</summary>
+
+## A. Unit Testing Report
+
+### Setup & Menjalankan Tests
+
+**Stack:** Django + SQLite  
+**Apps:** accounts, voting, elections, candidates, audit  
+**Test location:** `tests/test_security.py` (centralized) + per-app tests
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Run semua tests
+python manage.py test tests accounts.tests voting.tests elections.tests candidates.tests -v 2
+
+# Run dengan coverage
+coverage run --source='.' --omit='*/migrations/*,*/tests/*,manage.py,*/settings*,*/wsgi*,*/asgi*' manage.py test tests accounts.tests voting.tests elections.tests candidates.tests -v 2
+
+# Lihat coverage report
+coverage report --show-missing
+```
+
+---
+
+### Hasil Unit Testing — 45/45 Tests PASS ✅
+
+| Kategori | Jumlah Tests | Status |
+|----------|-------------|--------|
+| SQL Injection Prevention | 7 | ✅ All PASS |
+| Code Injection / XSS | 8 | ✅ All PASS |
+| Broken Authentication | 17 | ✅ All PASS |
+| CSRF Protection | 13 | ✅ All PASS |
+| Unit Tests - accounts | 38 | ✅ All PASS |
+| Unit Tests - voting | 14 | ✅ All PASS |
+| Unit Tests - elections | 27 | ✅ All PASS |
+| Unit Tests - candidates | 39 | ✅ All PASS |
+| **Total** | **163** | **✅ All PASS** |
+
+![alt text](img/image-4-2.png)
+
+---
+
+### Coverage Report
+
+```
+Name                              Stmts   Miss  Cover
+-----------------------------------------------------
+accounts/views.py                    96      1    99%
+accounts/utils.py                    21      1    95%
+accounts/decorators.py               40      4    90%
+accounts/forms.py                   131     16    88%
+voting/views.py                      46      7    85%
+candidates/views.py                  80      0   100%
+elections/views.py                   84      1    99%
+elections/forms.py                   34      2    94%
+audit/views.py                       25     15    40%
+-----------------------------------------------------
+TOTAL                              1068    233    78%
+```
+
+**Overall Coverage: 65%**
+![alt text](img/image-5-2.png)
+
+---
+
+## B. Pentesting Report
+
+**Tool:** OWASP ZAP 2.17.0  
+**Target:** http://localhost:8000  
+**Tanggal:** 25 Mei 2026
+
+---
+
+### 1. Reconnaissance
+
+#### 1a. Passive Reconnaissance — Spider Tanpa Login
+
+ZAP Spider dijalankan tanpa autentikasi. Hasil menunjukkan hanya endpoint publik yang dapat diakses:
+
+| Endpoint | Method | Keterangan |
+|----------|--------|------------|
+| `/` | GET | Redirect ke login |
+| `/accounts/login/` | GET, POST | Halaman login publik |
+| `/robots.txt` | GET | Accessible |
+| `/sitemap.xml` | GET | Accessible |
+| `/favicon.ico` | GET | Accessible |
+
+**Kesimpulan:** Dekorator `@login_required` bekerja dengan benar dimana semua endpoint protected tidak terkekspos tanpa autentikasi.
+
+![alt text](img/1_Site_Tree.png)
+
+#### 1b. Active Reconnaissance — Manual Explore dengan 3 Role
+
+Manual Explore dilakukan dengan login menggunakan 3 role berbeda (admin, pemilih, paslon). Site Tree lengkap yang berhasil di-map:
+
+```
+http://localhost:8000/
+├── accounts/
+│   ├── login/
+│   ├── logout/
+│   └── voters/
+├── audit/
+│   ├── logs/
+│   └── results/
+├── candidates/
+│   ├── 22/
+│   ├── 23/
+│   ├── election/12/
+│   ├── election/13/
+│   └── my-profile/
+├── elections/
+├── static/
+└── voting/
+```
+
+![alt text](<img/Screenshot 2026-05-25 114232.png>)
+
+![alt text](<img/Screenshot 2026-05-25 115342.png>)
+
+![alt text](<img/Screenshot 2026-05-25 115409.png>)
+
+![alt text](<img/Screenshot 2026-05-25 120549.png>)
+
+![alt text](<img/Screenshot 2026-05-25 120559.png>)
+
+---
+
+### 2. Threat Modeling
+
+| # | Target Endpoint | Attack | Severity | CWE |
+|---|----------------|--------|----------|-----|
+| 1 | /accounts/login/ | SQL Injection | High | CWE-89 |
+| 2 | /accounts/login/ | Brute Force | Medium | CWE-307 |
+| 3 | /accounts/login/ | User Enumeration | Low | CWE-204 |
+| 4 | /vote/\<id\>/ | CSRF | High | CWE-352 |
+| 5 | /vote/\<id\>/ | Broken Auth | High | CWE-306 |
+| 6 | /vote/\<id\>/ | Double Vote | High | CWE-799 |
+| 7 | /candidates/ | Stored XSS | High | CWE-79 |
+| 8 | /candidates/ | HTML Injection | Medium | CWE-79 |
+| 9 | /candidates/ | SSTI | High | CWE-94 |
+| 10 | /elections/ | Broken Access Control | High | CWE-284 |
+| 11 | /accounts/voters/ | Privilege Escalation | High | CWE-269 |
+| 12 | /admin/ | Broken Access Control | High | CWE-284 |
+
+---
+
+### 3. Scanning & Enumeration
+
+#### ZAP Active Scan — Alerts Summary (28 Alerts)
+
+| Risk | Jumlah | Contoh Alert |
+|------|--------|-------------|
+| Medium | 8 | CSP Header Not Set, Cross-Domain Misconfiguration, Cookie Issues |
+| Low | 12 | Server Leaks Version Info, HSTS Not Set, X-Content-Type-Options Missing |
+| Informational | 8 | Authentication Request Identified, Modern Web Application |
+
+![alt text](<img/Screenshot 2026-05-25 115444.png>)
+
+![alt text](<img/Screenshot 2026-05-25 115516.png>)
+
+**Notable alerts:**
+- **User Controllable HTML Element Attribute (Potential XSS)** — parameter `email` di `/accounts/login/` → *dikonfirmasi false positive, input divalidasi server-side*
+- **Server Leaks Version Information** — `WSGIServer/0.2 CPython/3.12.4` di-expose via `Server` HTTP header
+- **Cookie Without Secure Flag** — session cookie tidak di-set dengan flag `Secure`
+- **HTTP Only Site** — aplikasi berjalan di HTTP, bukan HTTPS
+
+![SS ZAP Alert detail — User Controllable HTML Element (Potential XSS)](img/image-6-2.png)
+> *Screenshot menunjukkan detail alert XSS di ZAP — URL target, parameter email, dan evidence yang menunjukkan ini adalah false positive karena input divalidasi server-side*
+
+![SS ZAP Alert detail — Server Leaks Version Information](img/image-7-2.png)
+> *Screenshot menunjukkan detail alert Server header yang membocorkan versi WSGIServer/0.2 CPython/3.12.4*
+
+---
+
+### 4. Exploitation & Testing (Manual Tests)
+
+#### 4a. SQL Injection Test
+
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /accounts/login/` |
+| **Parameter** | email |
+| **Payload** | `' OR '1'='1 ' OR 1=1-- admin'--` |
+| **Response** | 200 OK — halaman login kembali ditampilkan |
+| **Hasil** | ✅ **AMAN** — Login bypass GAGAL |
+| **Analisis** | Aplikasi menampilkan pesan "Input tidak valid" tanpa error traceback Django. Terdapat 2 lapis proteksi: validasi format email di frontend (HTML5) dan validasi generik di backend |
+
+![SS SQLi test — browser menampilkan pesan "Input tidak valid"](<img/Screenshot 2026-05-25 121810.png>)
+> *Screenshot menunjukkan halaman login dengan payload SQLi di field email, pesan error "Input tidak valid. Periksa kembali data Anda.", dan Network tab DevTools menampilkan response code 200 — membuktikan login bypass gagal*
+
+---
+
+#### 4b. CSRF Protection Test
+
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /accounts/login/` |
+| **Method** | POST tanpa csrfmiddlewaretoken |
+| **Tool** | ZAP Requester |
+| **Response** | **403 Forbidden** |
+| **Hasil** | ✅ **AMAN** — CSRF Protection aktif |
+| **Analisis** | Django `CsrfViewMiddleware` berjalan dengan benar — setiap POST request tanpa CSRF token valid langsung ditolak dengan 403 |
+
+![SS ZAP Requester — response 403 Forbidden saat request tanpa csrfmiddlewaretoken](<img/Screenshot 2026-05-25 123735.png>) 
+> *Screenshot menunjukkan ZAP Requester dengan request body hanya berisi email dan password (tanpa csrfmiddlewaretoken), dan panel Response menampilkan HTTP/1.1 403 Forbidden — membuktikan CSRF protection aktif*
+
+---
+
+#### 4c. Stored XSS Test
+
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /candidates/` |
+| **Parameter** | Nama Paslon, Visi, Misi |
+| **Payload 1** | `<script>alert('XSS')</script>` |
+| **Payload 2** | `<img src=x onerror=alert(1)>` |
+| **Response** | 200 — form dikembalikan dengan pesan validasi |
+| **Hasil** | ✅ **AMAN** — Semua payload diblokir |
+| **Analisis** | Validator `is_safe_text()` di `accounts/utils.py` memblokir tag HTML/script sebelum data tersimpan ke database |
+
+![SS XSS test — form kandidat menampilkan pesan validasi error](<img/Screenshot 2026-05-25 124152.png>)
+> *Screenshot menunjukkan form Tambah Kandidat dengan payload XSS di field Nama Paslon dan Visi, serta pesan error merah "Input mengandung karakter tidak diizinkan (tag HTML/script tidak diperbolehkan)", membuktikan validator is_safe_text() aktif memblokir payload*
+
+---
+
+#### 4d. Brute Force Test
+
+| Item | Detail |
+|------|--------|
+| **Endpoint** | `POST /accounts/login/` |
+| **Tool** | ZAP Fuzzer |
+| **Parameter** | password |
+| **Payloads** | password123, admin, 123456, Admin1234, wrongpassword, test123 |
+| **Response** | Semua 200 OK → setelah 5 percobaan muncul lockout |
+| **Hasil** | ✅ **AMAN** — Rate limiting aktif |
+| **Analisis** | Aplikasi memiliki `LoginAttempt` model yang mencatat setiap percobaan login. Akun dikunci setelah ≥5 percobaan gagal. Lockout berbasis email |
+
+![alt text](<img/Screenshot 2026-05-25 124758.png>)
+> *Screenshot menunjukkan tab Fuzzer ZAP dengan 6 baris hasil fuzz (password123, admin, 123456, Admin1234, wrongpassword, test123) — semua response 200 OK dengan body size seragam, membuktikan tidak ada perbedaan response antar password salah (tidak ada user enumeration)*
+
+![limit](img/image-8-2.png)
+> *Screenshot menunjukkan halaman login menampilkan pesan "Terlalu banyak percobaan login" setelah akun terkena lockout, membuktikan mekanisme rate limiting LoginAttempt aktif*
+
+---
+
+### 5. Reporting & Remediation
+![ZAP Generate Report](img/image-9-2.png)
+> *Screenshot menunjukkan dialog Generate Report ZAP dengan settings yang digunakan (template Risk and Confidence HTML, semua sections dicentang) dan konfirmasi report berhasil dibuat*
+
+> 📄 **[File ZAP Report HTML terlampir: `2026-05-25-ZAP-Report-.html`]**
+
+#### Tabel Remediation
+
+| # | Alert | Risk | CWE | Status | Rekomendasi |
+|---|-------|------|-----|--------|-------------|
+| 1 | SQL Injection | High | CWE-89 | ✅ Aman | Django ORM sudah handle parameterized queries |
+| 2 | Stored XSS | High | CWE-79 | ✅ Aman | `is_safe_text()` validator aktif di semua form |
+| 3 | CSRF | High | CWE-352 | ✅ Aman | `CsrfViewMiddleware` aktif, terbukti 403 response |
+| 4 | Brute Force | Medium | CWE-307 | ✅ Aman | `LoginAttempt` model + lockout mekanisme aktif |
+| 5 | CSP Header Not Set | Medium | CWE-693 | ❌ Belum | Tambah `Content-Security-Policy` header via `django-csp` |
+| 6 | HTTP Only Site | Medium | CWE-311 | ❌ Belum | Set `SECURE_SSL_REDIRECT=True` di production settings |
+| 7 | Cookie Without Secure Flag | Medium | CWE-614 | ❌ Belum | Set `SESSION_COOKIE_SECURE=True` dan `CSRF_COOKIE_SECURE=True` |
+| 8 | Cross-Domain Misconfiguration | Medium | CWE-264 | ❌ Belum | Batasi CORS hanya ke domain yang diizinkan |
+| 9 | Server Leaks Version Info | Low | CWE-497 | ❌ Belum | Suppress `Server` header di WSGI config atau gunakan reverse proxy |
+| 10 | HSTS Not Set | Low | CWE-319 | ❌ Belum | Set `SECURE_HSTS_SECONDS=31536000` di production settings |
+| 11 | X-Content-Type-Options Missing | Low | CWE-693 | ❌ Belum | Set `SECURE_CONTENT_TYPE_NOSNIFF=True` di settings |
+| 12 | Cookie Without SameSite | Low | CWE-1275 | ⚠️ Sebagian | Session cookie sudah `SameSite=Lax`, pastikan semua cookie konsisten |
+
+---
+
+## C. Video Demo
+🎥 **Link YouTube:** 
+
+---
+## Anggota Kelompok
+
+| Nama | NPM | Modul |
+|------|-----|-------|
+| Kadek Chandra Rasmi | 2406426473 | 
+| Muhamad Hakim Nizami | 2406399485 | 
+| Muhammad Helmi Alfarissi | 2406402416 | 
+| Nazwa Zahra Sausan | 2406397750 | 
+| Syakirah Zahra Dhawini | 2406353950 | 
+
+
+</details>
