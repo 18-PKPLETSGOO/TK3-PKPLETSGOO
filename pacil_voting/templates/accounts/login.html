@@ -11,6 +11,15 @@
       </div>
       <div class="card-body p-4">
         <h5 class="mb-3">Masuk ke Akun</h5>
+        {% if locked_out %}
+          <div class="alert alert-danger d-flex align-items-center" role="alert">
+            <i class="bi bi-lock-fill me-2 fs-5"></i>
+            <div>
+              <strong>Akun sementara dikunci.</strong><br>
+              Terlalu banyak percobaan login gagal. Silakan coba lagi setelah {{ lockout_minutes }} menit.
+            </div>
+          </div>
+        {% endif %}
         <form method="post" action="{% url 'accounts:login' %}" novalidate>
           {% csrf_token %}
           <div class="mb-3">
@@ -28,7 +37,7 @@
             {% endif %}
           </div>
           <div class="d-grid">
-            <button type="submit" class="btn btn-dark btn-lg">
+            <button type="submit" class="btn btn-dark btn-lg" {% if locked_out %}disabled{% endif %}>
               <i class="bi bi-box-arrow-in-right"></i> Masuk
             </button>
           </div>
