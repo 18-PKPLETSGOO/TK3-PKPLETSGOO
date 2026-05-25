@@ -54,7 +54,7 @@ Sistem ini mengimplementasikan **E-Voting System (Skenario 4)** dengan peran pen
 ---
 
 <details>
-<summary>📋 Tugas 3 — Secure Coding</summary>
+<summary><h2>📋 Tugas 3 — Secure Coding</h2></summary>
 
 ## Implementasi Secure Coding
 
@@ -602,7 +602,7 @@ python manage.py test
 ---
 
 <details open>
-<summary>Tugas 4 — Unit Testing & Pentesting</summary>
+<summary><h2>Tugas 4 — Unit Testing & Pentesting</h2></summary>
 
 ## A. Unit Testing Report
 
