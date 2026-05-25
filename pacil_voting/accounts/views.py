@@ -12,6 +12,21 @@ from audit.models import AuditLog
 
 @login_not_required
 def login_view(request):
+    max_attempts = getattr(settings, 'MAX_LOGIN_ATTEMPTS', 5)
+    lockout_minutes = getattr(settings, 'LOCKOUT_DURATION_MINUTES', 15)
+
+    if request.method == 'GET':
+        locked_email = request.session.get('locked_email')
+        if locked_email and LoginAttempt.is_locked_out(locked_email, max_attempts, lockout_minutes):
+            form = LoginForm()
+            return render(request, 'accounts/login.html', {
+                'form': form,
+                'locked_out': True,
+                'lockout_minutes': lockout_minutes,
+            })
+        elif locked_email:
+            del request.session['locked_email']
+
     if request.method == 'POST':
         form = LoginForm(request.POST)
         ip = get_client_ip(request)
@@ -20,24 +35,23 @@ def login_view(request):
             email = form.cleaned_data['email']
             password = form.cleaned_data['password']
 
-            max_attempts = getattr(settings, 'MAX_LOGIN_ATTEMPTS', 5)
-            lockout_minutes = getattr(settings, 'LOCKOUT_DURATION_MINUTES', 15)
-
             if LoginAttempt.is_locked_out(email, max_attempts, lockout_minutes):
+                request.session['locked_email'] = email
                 AuditLog.log(
                     action=AuditLog.ACTION_ACCOUNT_LOCKED,
                     ip_address=ip,
                     details={'email': email, 'reason': 'Too many failed attempts'}
                 )
-                messages.error(
-                    request,
-                    'Terlalu banyak percobaan login. Silakan coba lagi nanti.'
-                )
-                return render(request, 'accounts/login.html', {'form': form})
+                return render(request, 'accounts/login.html', {
+                    'form': form,
+                    'locked_out': True,
+                    'lockout_minutes': lockout_minutes,
+                })
 
             user = authenticate(request, username=email, password=password)
 
             if user is not None:
+                request.session.pop('locked_email', None)
                 login(request, user)
                 LoginAttempt.objects.create(email=email, ip_address=ip, success=True)
                 AuditLog.log(
@@ -54,10 +68,12 @@ def login_view(request):
                     details={'email': email}
                 )
                 if LoginAttempt.is_locked_out(email, max_attempts, lockout_minutes):
-                    messages.error(
-                        request,
-                        'Terlalu banyak percobaan login. Silakan coba lagi nanti.'
-                    )
+                    request.session['locked_email'] = email
+                    return render(request, 'accounts/login.html', {
+                        'form': form,
+                        'locked_out': True,
+                        'lockout_minutes': lockout_minutes,
+                    })
                 else:
                     messages.error(
                         request,

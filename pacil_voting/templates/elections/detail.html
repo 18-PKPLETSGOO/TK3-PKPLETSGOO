@@ -139,6 +139,14 @@
         </form>
       </div>
       {% endif %}
+      {% if user.is_candidate_role and candidate.user == user %}
+      <div class="card-footer">
+        <a href="{% url 'candidates:my_profile' %}" class="btn btn-sm btn-outline-primary">
+          <i class="bi bi-pencil"></i>
+          {% if election.status == 'DRAFT' %}Edit Profil Saya{% else %}Lihat Profil Saya{% endif %}
+        </a>
+      </div>
+      {% endif %}
     </div>
   </div>
   {% empty %}
