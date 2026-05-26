@@ -915,28 +915,240 @@ Meski semua 12 ancaman di atas sudah dimitigasi pada level aplikasi, terdapat be
 
 ### 5. Reporting & Remediation
 
+#### 5.0 Pendahuluan Pengujian
+
+| Parameter | Detail |
+| --------- | ------ |
+| **Aplikasi** | Pacil Voting — E-Voting System |
+| **URL Target** | http://localhost:8000 |
+| **Tanggal** | 25 Mei 2026 |
+| **Tool** | OWASP ZAP 2.17.0, Browser (Microsoft Edge), ZAP Requester, ZAP Fuzzer |
+| **Tipe Assessment** | Gray Box — penguji memiliki akun demo untuk semua role (admin, pemilih, kandidat) |
+| **Scope** | Seluruh endpoint aplikasi Pacil Voting pada `http://localhost:8000` |
+| **Out of Scope** | Domain eksternal yang ikut tertangkap ZAP proxy: `edge.microsoft.com`, `www.bing.com`, `cdn.jsdelivr.net`, `turing-writingassistance.edge.microsoft.com` |
+
+**Catatan Metodologi:** ZAP dijalankan sebagai proxy browser sehingga turut menangkap traffic dari tab browser lain. Alert yang berasal dari domain Microsoft/Bing bukan merupakan temuan terhadap aplikasi target dan tidak dimasukkan dalam laporan ini.
+
+---
+
+#### 5.1 Klasifikasi Risiko
+
+| Level | Definisi |
+| ----- | -------- |
+| **High** | Kerentanan yang dapat dieksploitasi secara publik dan berpotensi menyebabkan kompromi sistem secara menyeluruh |
+| **Medium** | Kerentanan yang memerlukan kondisi tertentu untuk dieksploitasi atau dampaknya terbatas, namun tetap memerlukan perbaikan |
+| **Low** | Konfigurasi lemah atau informasi sensitif yang terekspos namun tidak langsung dapat dieksploitasi |
+| **Informational** | Temuan yang tidak merepresentasikan risiko keamanan langsung namun perlu diperhatikan |
+
+---
+
+#### 5.2 Executive Summary
+
+Pengujian penetrasi gray box terhadap aplikasi Pacil Voting menunjukkan **tidak ada kerentanan High** pada application layer. Semua vektor serangan wajib yang diuji (SQL Injection, XSS, CSRF, Brute Force) berhasil dimitigasi oleh kontrol keamanan yang telah diimplementasikan.
+
+Temuan aktif yang perlu diperbaiki berasal dari konfigurasi server dan transport layer yang belum diperkuat untuk lingkungan production:
+
+| Risk | Temuan Aktif | Terkonfirmasi Aman |
+| ---- | ------------ | ------------------ |
+| High | 0 | 3 (SQLi, XSS, CSRF) |
+| Medium | 3 | 1 (Brute Force) |
+| Low | 2 | — |
+| **Total** | **5** | **4** |
+
+> 📄 **ZAP Report Lengkap:** [`2026-05-25-ZAP-Report-.html`](2026-05-25-ZAP-Report-.html)
+
 ![ZAP Generate Report](img/image-9-2.png)
 
-> _Screenshot menunjukkan dialog Generate Report ZAP dengan settings yang digunakan (template Risk and Confidence HTML, semua sections dicentang) dan konfirmasi report berhasil dibuat_
+> _Dialog Generate Report ZAP — template Risk and Confidence HTML, semua sections dicentang, konfirmasi report berhasil dibuat_
 
-> 📄 **[File ZAP Report HTML terlampir: `2026-05-25-ZAP-Report-.html`]**
+---
 
-#### Tabel Remediation
+#### 5.3 Detail Temuan Vulnerability
 
-| #   | Alert                          | Risk   | CWE      | Status      | Rekomendasi                                                          |
-| --- | ------------------------------ | ------ | -------- | ----------- | -------------------------------------------------------------------- |
-| 1   | SQL Injection                  | High   | CWE-89   | ✅ Aman     | Django ORM sudah handle parameterized queries                        |
-| 2   | Stored XSS                     | High   | CWE-79   | ✅ Aman     | `is_safe_text()` validator aktif di semua form                       |
-| 3   | CSRF                           | High   | CWE-352  | ✅ Aman     | `CsrfViewMiddleware` aktif, terbukti 403 response                    |
-| 4   | Brute Force                    | Medium | CWE-307  | ✅ Aman     | `LoginAttempt` model + lockout mekanisme aktif                       |
-| 5   | CSP Header Not Set             | Medium | CWE-693  | ❌ Belum    | Tambah `Content-Security-Policy` header via `django-csp`             |
-| 6   | HTTP Only Site                 | Medium | CWE-311  | ❌ Belum    | Set `SECURE_SSL_REDIRECT=True` di production settings                |
-| 7   | Cookie Without Secure Flag     | Medium | CWE-614  | ❌ Belum    | Set `SESSION_COOKIE_SECURE=True` dan `CSRF_COOKIE_SECURE=True`       |
-| 8   | Cross-Domain Misconfiguration  | Medium | CWE-264  | ❌ Belum    | Batasi CORS hanya ke domain yang diizinkan                           |
-| 9   | Server Leaks Version Info      | Low    | CWE-497  | ❌ Belum    | Suppress `Server` header di WSGI config atau gunakan reverse proxy   |
-| 10  | HSTS Not Set                   | Low    | CWE-319  | ❌ Belum    | Set `SECURE_HSTS_SECONDS=31536000` di production settings            |
-| 11  | X-Content-Type-Options Missing | Low    | CWE-693  | ❌ Belum    | Set `SECURE_CONTENT_TYPE_NOSNIFF=True` di settings                   |
-| 12  | Cookie Without SameSite        | Low    | CWE-1275 | ⚠️ Sebagian | Session cookie sudah `SameSite=Lax`, pastikan semua cookie konsisten |
+##### PKPL_VUL_01 — Content Security Policy (CSP) Header Not Set
+
+| Field | Detail |
+| ----- | ------ |
+| **Reference No** | PKPL_VUL_01 |
+| **Risk Rating** | Medium |
+| **CWE** | CWE-693 |
+| **Tools Used** | OWASP ZAP 2.17.0 (Active Scan) |
+| **Discovered By** | Automated Scan |
+| **Vulnerable URL** | `http://localhost:8000/` (semua halaman) |
+| **Status** | ❌ Belum dimitigasi |
+
+**Deskripsi:**
+ZAP mendeteksi bahwa respons HTTP server tidak menyertakan header `Content-Security-Policy`. Meskipun aplikasi sudah mendefinisikan CSP melalui meta tag di `base.html`, CSP via HTTP response header lebih efektif karena diproses sebelum parsing HTML dimulai dan tidak dapat di-bypass melalui injection ke dalam HTML.
+
+**Implikasi:**
+Tanpa CSP header, browser tidak memiliki pembatasan eksplisit terhadap sumber script dan resource. Ini meningkatkan risiko keberhasilan XSS jika terdapat bypass validasi input yang tidak terdeteksi.
+
+**Rekomendasi:**
+```python
+# pip install django-csp
+# pacil_voting/settings.py
+INSTALLED_APPS += ['csp']
+MIDDLEWARE += ['csp.middleware.CSPMiddleware']
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = ("'self'", "https://cdn.jsdelivr.net")
+CSP_STYLE_SRC  = ("'self'", "https://cdn.jsdelivr.net")
+CSP_FONT_SRC   = ("'self'", "https://cdn.jsdelivr.net")
+```
+
+**Referensi:** https://owasp.org/www-community/controls/Content_Security_Policy
+
+---
+
+##### PKPL_VUL_02 — HTTP Only Site (Tidak Ada HTTPS)
+
+| Field | Detail |
+| ----- | ------ |
+| **Reference No** | PKPL_VUL_02 |
+| **Risk Rating** | Medium |
+| **CWE** | CWE-311 |
+| **Tools Used** | OWASP ZAP 2.17.0 (Active Scan) |
+| **Discovered By** | Automated Scan |
+| **Vulnerable URL** | `http://localhost:8000/` |
+| **Status** | ❌ Belum dimitigasi (berlaku untuk environment production) |
+
+**Deskripsi:**
+Aplikasi berjalan sepenuhnya pada HTTP tanpa enkripsi TLS/SSL. Semua data yang ditransmisikan antara browser dan server — termasuk session cookie, CSRF token, dan data suara — dapat disadap oleh penyerang yang berada di jalur jaringan yang sama (Man-in-the-Middle attack).
+
+**Implikasi:**
+Session token pemilih dapat dicuri melalui network sniffing, memungkinkan session hijacking. Kerahasiaan pilihan suara dapat bocor meski aplikasi menggunakan token anonim di sisi database.
+
+**Rekomendasi:**
+```python
+# pacil_voting/settings.py (production)
+SECURE_SSL_REDIRECT = True
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+```
+
+**Referensi:** https://owasp.org/www-project-top-ten/2017/A3_2017-Sensitive_Data_Exposure
+
+---
+
+##### PKPL_VUL_03 — Sub Resource Integrity (SRI) Attribute Missing
+
+| Field | Detail |
+| ----- | ------ |
+| **Reference No** | PKPL_VUL_03 |
+| **Risk Rating** | Medium |
+| **CWE** | CWE-353 |
+| **Tools Used** | OWASP ZAP 2.17.0 (Active Scan) |
+| **Discovered By** | Automated Scan |
+| **Vulnerable URL** | `http://localhost:8000/` (semua halaman yang me-load CDN) |
+| **Status** | ❌ Belum dimitigasi |
+
+**Deskripsi:**
+Tag `<link>` dan `<script>` yang me-load Bootstrap dari `https://cdn.jsdelivr.net` tidak menyertakan atribut `integrity` (Subresource Integrity hash). Browser tidak dapat memverifikasi apakah resource yang diterima dari CDN telah di-tamper.
+
+**Implikasi:**
+Jika CDN dikompromikan atau penyerang melakukan MitM terhadap koneksi CDN, JavaScript/CSS berbahaya dapat dieksekusi di browser semua pengguna tanpa terdeteksi.
+
+**Rekomendasi:**
+```html
+<!-- templates/base.html — tambahkan integrity hash -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM"
+      crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+        crossorigin="anonymous"></script>
+```
+
+**Referensi:** https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
+
+---
+
+##### PKPL_VUL_04 — Cookie Without Secure Flag
+
+| Field | Detail |
+| ----- | ------ |
+| **Reference No** | PKPL_VUL_04 |
+| **Risk Rating** | Low |
+| **CWE** | CWE-614 |
+| **Tools Used** | OWASP ZAP 2.17.0 (Active Scan) |
+| **Discovered By** | Automated Scan |
+| **Vulnerable URL** | `http://localhost:8000/accounts/login/` |
+| **Status** | ❌ Belum dimitigasi (bergantung pada PKPL_VUL_02 — perlu HTTPS terlebih dahulu) |
+
+**Deskripsi:**
+Cookie `sessionid` dan `csrftoken` tidak memiliki flag `Secure`. Browser mengizinkan pengiriman cookie ini melalui koneksi HTTP yang tidak terenkripsi, membuka celah untuk pencurian cookie melalui network sniffing.
+
+**Implikasi:**
+Session cookie yang berhasil dicuri memungkinkan penyerang melakukan session hijacking tanpa perlu mengetahui kredensial pengguna.
+
+**Rekomendasi:**
+```python
+# pacil_voting/settings.py (aktifkan setelah HTTPS terpasang)
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+```
+
+**Referensi:** https://owasp.org/www-community/controls/SecureCookieAttribute
+
+---
+
+##### PKPL_VUL_05 — Server Version Information Disclosure
+
+| Field | Detail |
+| ----- | ------ |
+| **Reference No** | PKPL_VUL_05 |
+| **Risk Rating** | Low |
+| **CWE** | CWE-497 |
+| **Tools Used** | OWASP ZAP 2.17.0, Browser DevTools |
+| **Discovered By** | Automated Scan |
+| **Vulnerable URL** | Semua endpoint `http://localhost:8000` |
+| **Status** | ❌ Belum dimitigasi |
+
+**Deskripsi:**
+Header HTTP response `Server: WSGIServer/0.2 CPython/3.12.4` mengekspos versi web server dan interpreter Python yang digunakan. Informasi ini mempermudah penyerang melakukan reconnaissance untuk mencari CVE yang relevan.
+
+**Implikasi:**
+Penyerang dapat langsung mentarget exploit spesifik untuk versi Python/WSGI yang terekspos, mempercepat proses eksploitasi jika ditemukan kerentanan di versi tersebut.
+
+**Rekomendasi:**
+Deploy aplikasi di belakang reverse proxy (Nginx/Caddy) yang menyembunyikan header `Server` backend:
+```nginx
+# konfigurasi Nginx
+server_tokens off;
+proxy_hide_header Server;
+add_header Server "";
+```
+
+**Referensi:** https://owasp.org/www-project-web-security-testing-guide/
+
+---
+
+#### 5.4 Hasil Pengujian Manual (Confirmed Mitigated)
+
+| Ref | Vektor Serangan | Risk | Endpoint | Payload | Hasil | Mitigasi yang Terbukti |
+| --- | --------------- | ---- | -------- | ------- | ----- | ---------------------- |
+| PKPL_TEST_01 | SQL Injection | High | `POST /accounts/login/` | `' OR '1'='1`, `' UNION SELECT...` | ✅ Login bypass gagal, HTTP 200 tanpa akses | Django ORM parameterized queries di seluruh codebase |
+| PKPL_TEST_02 | CSRF Attack | High | `POST /voting/cast/` | Request tanpa `csrfmiddlewaretoken` | ✅ HTTP 403 Forbidden | `CsrfViewMiddleware` aktif global |
+| PKPL_TEST_03 | Stored XSS | High | `POST /candidates/` | `<script>alert('XSS')</script>`, `<img src=x onerror=alert(1)>` | ✅ Form validation error, payload tidak tersimpan | `is_safe_text()`, `html.escape()`, Django auto-escaping |
+| PKPL_TEST_04 | Brute Force | Medium | `POST /accounts/login/` | 6 password berbeda via ZAP Fuzzer | ✅ Akun terkunci setelah 5 percobaan gagal | Model `LoginAttempt`, lockout 15 menit |
+
+---
+
+#### 5.5 Tabel Remediation Prioritas
+
+| Prioritas | Ref | Alert | Risk | CWE | Status | Langkah Konkret |
+| --------- | --- | ----- | ---- | --- | ------ | --------------- |
+| 1 | PKPL_VUL_02 | HTTP Only Site | Medium | CWE-311 | ❌ Belum | Pasang TLS, set `SECURE_SSL_REDIRECT=True` di production |
+| 2 | PKPL_VUL_04 | Cookie Without Secure Flag | Low | CWE-614 | ❌ Belum | Set `SESSION_COOKIE_SECURE=True` dan `CSRF_COOKIE_SECURE=True` (setelah HTTPS) |
+| 3 | PKPL_VUL_01 | CSP Header Not Set | Medium | CWE-693 | ❌ Belum | Install `django-csp`, konfigurasi di `settings.py` |
+| 4 | PKPL_VUL_03 | SRI Attribute Missing | Medium | CWE-353 | ❌ Belum | Tambah atribut `integrity=` pada semua tag CDN di `base.html` |
+| 5 | PKPL_VUL_05 | Server Version Disclosure | Low | CWE-497 | ❌ Belum | Deploy di belakang Nginx dengan `server_tokens off` |
+| — | PKPL_TEST_01 | SQL Injection | High | CWE-89 | ✅ Aman | Django ORM parameterized queries di seluruh codebase |
+| — | PKPL_TEST_03 | Stored XSS | High | CWE-79 | ✅ Aman | `is_safe_text()` + Django template auto-escaping aktif |
+| — | PKPL_TEST_02 | CSRF | High | CWE-352 | ✅ Aman | `CsrfViewMiddleware` aktif, terbukti HTTP 403 response |
+| — | PKPL_TEST_04 | Brute Force | Medium | CWE-307 | ✅ Aman | Model `LoginAttempt` + lockout 15 menit setelah 5 gagal |
 
 ---
 
