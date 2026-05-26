@@ -664,7 +664,7 @@ audit/views.py                       25     15    40%
 TOTAL                              1068    233    78%
 ```
 
-**Overall Coverage: 65%**
+**Overall Coverage: 78%**
 ![alt text](img/image-5-2.png)
 
 ---
